@@ -1,0 +1,25 @@
+## Local env / secrets
+.env
+.env.*
+
+## Node / PHP (if any)
+node_modules/
+vendor/
+
+## Build outputs
+target/
+dist/
+build/
+out/
+
+## Logs / temp files in this repo
+*.log
+errors.txt
+
+## OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
