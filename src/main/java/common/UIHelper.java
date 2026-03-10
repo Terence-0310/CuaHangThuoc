@@ -114,4 +114,23 @@ public class UIHelper {
 		txt.setBackground(ColorScheme.INPUT_DISABLED);
 		return txt;
 	}
+
+	/**
+	 * Tạo Info Banner (Thông báo nổi bật dạng block)
+	 */
+	public static javax.swing.JPanel createInfoBanner(String htmlMessage) {
+		javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout());
+		panel.setBackground(new Color(225, 245, 254)); // Light Blue 50
+		panel.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+			javax.swing.BorderFactory.createLineBorder(new Color(129, 212, 250), 1),
+			javax.swing.BorderFactory.createEmptyBorder(12, 16, 12, 16)
+		));
+
+		javax.swing.JLabel lblMessage = new javax.swing.JLabel(htmlMessage);
+		lblMessage.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+		lblMessage.setForeground(new Color(1, 87, 155)); // Light Blue 900
+		
+		panel.add(lblMessage, java.awt.BorderLayout.CENTER);
+		return panel;
+	}
 }

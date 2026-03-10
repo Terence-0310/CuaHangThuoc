@@ -1,7 +1,6 @@
 package app;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
@@ -12,13 +11,10 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import javax.swing.WindowConstants;
-import javax.swing.border.EmptyBorder;
 
 import common.ColorScheme;
 import common.ConnectDB;
-import common.IconHelper;
 import entity.NguoiDung;
 import panels.BaoCaoPanel;
 import panels.BanHangPanel;
@@ -29,6 +25,7 @@ import panels.NguoiDungPanel;
 import panels.NhaCungCapPanel;
 import panels.NhapHangPanel;
 import panels.SanPhamPanel;
+import panels.SidebarPanel;
 
 /**
  * MainFrame - Frame chính của ứng dụng với sidebar navigation cải tiến
@@ -41,10 +38,13 @@ public class MainFrame extends JFrame {
 	private static final long serialVersionUID = 1L;
 
 	private NguoiDung currentUser;
-	private JPanel sidebarPanel;
+	private SidebarPanel sidebarPanel;
 	private JPanel mainContentPanel;
-	private String currentAction = "dashboard";
-	private java.util.Map<String, JButton> menuItems = new java.util.HashMap<>();
+	private java.awt.CardLayout cardLayout;
+
+	// Panel references for refreshing data (Requirement: AUTO_REFRESH_DATA_AFTER_IMPORT)
+	private SanPhamPanel sanPhamPanel;
+	private LoHangPanel loHangPanel;
 
 	/**
 	 * Create the frame.
@@ -67,7 +67,6 @@ public class MainFrame extends JFrame {
 		}
 		
 		initialize();
-		setupPermissions();
 	}
 
 	/**
@@ -97,17 +96,18 @@ public class MainFrame extends JFrame {
 		});
 
 		var contentPane = new JPanel();
-		contentPane.setLayout(new BorderLayout(0, 0));
+		contentPane.setLayout(new java.awt.BorderLayout(0, 0));
 		setContentPane(contentPane);
-
-		// Sidebar (Left) matches full height
-		createSidebar();
 
 		// Main Content (Header + Body)
 		createMainContentContainer();
 
 		// Load dashboard by default và highlight menu
-		handleMenuClick("dashboard");
+		if (currentUser.getVaiTro().equalsIgnoreCase("Nhân viên")) {
+			handleMenuClick("banhang");
+		} else {
+			handleMenuClick("dashboard");
+		}
 	}
 
 	/**
@@ -123,11 +123,29 @@ public class MainFrame extends JFrame {
 
 		// Main Content
 		mainContentPanel = new JPanel();
-		mainContentPanel.setLayout(new BorderLayout());
+		cardLayout = new java.awt.CardLayout();
+		mainContentPanel.setLayout(cardLayout);
 		mainContentPanel.setBackground(ColorScheme.BACKGROUND);
 		mainContentPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+		
+		// Khởi tạo các panel 1 lần duy nhất để giữ trạng thái (UI State Persistence)
+		sanPhamPanel = new SanPhamPanel(currentUser);
+		loHangPanel = new LoHangPanel(currentUser);
+
+		mainContentPanel.add(new DashboardPanel(currentUser), "dashboard");
+		mainContentPanel.add(new BanHangPanel(currentUser), "banhang");
+		mainContentPanel.add(new NhapHangPanel(currentUser), "nhaphang");
+		mainContentPanel.add(sanPhamPanel, "sanpham");
+		mainContentPanel.add(loHangPanel, "lohang");
+		mainContentPanel.add(new KhachHangPanel(currentUser), "khachhang");
+		mainContentPanel.add(new NhaCungCapPanel(currentUser), "nhacungcap");
+		mainContentPanel.add(new BaoCaoPanel(currentUser), "baocao");
+		mainContentPanel.add(new NguoiDungPanel(currentUser), "nguoidung");
+
 		container.add(mainContentPanel, BorderLayout.CENTER);
 
+		sidebarPanel = new SidebarPanel(currentUser, this::handleMenuClick);
+		getContentPane().add(sidebarPanel, BorderLayout.WEST);
 		getContentPane().add(container, BorderLayout.CENTER);
 	}
 
@@ -180,161 +198,29 @@ public class MainFrame extends JFrame {
 	}
 
 	/**
-	 * Tạo sidebar navigation với Premium Dark Theme và Rounded Buttons
-	 */
-	private void createSidebar() {
-		sidebarPanel = new JPanel();
-		sidebarPanel.setBackground(ColorScheme.SIDEBAR_BG);
-		sidebarPanel.setPreferredSize(new Dimension(260, 0));
-		sidebarPanel.setLayout(new BorderLayout());
-
-		// Sidebar header (Logo area)
-		var sidebarHeader = new JPanel();
-		sidebarHeader.setOpaque(false);
-		sidebarHeader.setLayout(new java.awt.GridBagLayout());
-		sidebarHeader.setPreferredSize(new Dimension(260, 80));
-		sidebarHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(255,255,255,30)));
-
-		var lblLogo = new JLabel("MEPHAR");
-		lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 24));
-		lblLogo.setForeground(Color.WHITE);
-		sidebarHeader.add(lblLogo);
-
-		sidebarPanel.add(sidebarHeader, BorderLayout.NORTH);
-
-		// Navigation menu
-		var menuPanel = new JPanel();
-		menuPanel.setOpaque(false);
-		menuPanel.setLayout(new java.awt.GridLayout(0, 1, 0, 8)); // 8px spacing
-		menuPanel.setBorder(new EmptyBorder(15, 10, 15, 10));
-
-		// Menu items
-		addMenuItem(menuPanel, null, "Tổng quan", "dashboard", true);
-		addMenuItem(menuPanel, null, "Bán hàng", "banhang", true);
-		addMenuItem(menuPanel, null, "Nhập hàng", "nhaphang", true);
-		addMenuItem(menuPanel, null, "Sản phẩm", "sanpham", true);
-		addMenuItem(menuPanel, null, "Lô hàng", "lohang", true);
-		addMenuItem(menuPanel, null, "Khách hàng", "khachhang", true);
-		addMenuItem(menuPanel, null, "Nhà cung cấp", "nhacungcap", true);
-		addMenuItem(menuPanel, null, "Báo cáo", "baocao", true);
-		addMenuItem(menuPanel, null, "Người dùng", "nguoidung", true);
-
-		// Add dummy filler to push items up if needed, or put inside a ScrollPane if many items
-		var wrapperPanel = new JPanel(new BorderLayout());
-		wrapperPanel.setOpaque(false);
-		wrapperPanel.add(menuPanel, BorderLayout.NORTH);
-		
-		sidebarPanel.add(wrapperPanel, BorderLayout.CENTER);
-
-		getContentPane().add(sidebarPanel, BorderLayout.WEST);
-	}
-
-	/**
-	 * Thêm menu item vào sidebar (JButton implementation)
-	 */
-	private void addMenuItem(JPanel parent, Object iconCode, String text, String action, boolean enabled) {
-		var btn = new JButton(text);
-		btn.setHorizontalAlignment(SwingConstants.LEFT);
-		btn.setIconTextGap(15);
-		btn.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-		btn.setForeground(ColorScheme.SIDEBAR_TEXT);
-		btn.setBackground(ColorScheme.SIDEBAR_BG);
-		btn.setBorderPainted(false);
-		btn.setFocusPainted(false);
-		btn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-		
-		// Rounded Styling via FlatLaf
-		btn.putClientProperty("JButton.buttonType", "roundRect");
-		btn.putClientProperty("Component.arc", 16);
-		btn.setBorder(new EmptyBorder(10, 15, 10, 15));
-
-		// Icon logic (Placeholder)
-		// if (iconCode != null) btn.setIcon(...);
-
-		if (!enabled) {
-			btn.setVisible(false);
-		} else {
-			btn.addActionListener(e -> handleMenuClick(action));
-			
-			// Hover effect
-			btn.addMouseListener(new java.awt.event.MouseAdapter() {
-				@Override
-				public void mouseEntered(java.awt.event.MouseEvent e) {
-					if (!action.equals(currentAction)) {
-						btn.setBackground(ColorScheme.SIDEBAR_HOVER);
-					}
-				}
-
-				@Override
-				public void mouseExited(java.awt.event.MouseEvent e) {
-					if (!action.equals(currentAction)) {
-						btn.setBackground(ColorScheme.SIDEBAR_BG);
-					}
-				}
-			});
-		}
-
-		parent.add(btn);
-		menuItems.put(action, btn);
-	}
-
-	/**
 	 * Xử lý click menu
 	 */
 	private void handleMenuClick(String action) {
-		// Reset active state of previous item
-		if (currentAction != null && menuItems.containsKey(currentAction)) {
-			var oldBtn = menuItems.get(currentAction);
-			oldBtn.setBackground(ColorScheme.SIDEBAR_BG);
-			oldBtn.setForeground(ColorScheme.SIDEBAR_TEXT);
-			oldBtn.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+		// Update active state in sidebar
+		if (sidebarPanel != null) {
+			sidebarPanel.updateActiveState(action);
 		}
 		
-		// Set new active state
-		currentAction = action;
-		if (menuItems.containsKey(action)) {
-			var newBtn = menuItems.get(action);
-			newBtn.setBackground(ColorScheme.SIDEBAR_ACTIVE);
-			newBtn.setForeground(ColorScheme.SIDEBAR_TEXT_ACTIVE);
-			newBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-		}
-		
-		// Show panel
-		switch (action) {
-			case "dashboard": showPanel(new DashboardPanel(currentUser)); break;
-			case "banhang": showPanel(new BanHangPanel(currentUser)); break;
-			case "nhaphang": showPanel(new NhapHangPanel(currentUser)); break;
-			case "sanpham": showPanel(new SanPhamPanel(currentUser)); break;
-			case "lohang": showPanel(new LoHangPanel(currentUser)); break;
-			case "khachhang": showPanel(new KhachHangPanel(currentUser)); break;
-			case "nhacungcap": showPanel(new NhaCungCapPanel(currentUser)); break;
-			case "baocao": showPanel(new BaoCaoPanel(currentUser)); break;
-			case "nguoidung": showPanel(new NguoiDungPanel(currentUser)); break;
+		// Show panel using CardLayout
+		if (cardLayout != null && mainContentPanel != null) {
+			cardLayout.show(mainContentPanel, action);
 		}
 	}
 
 	/**
-	 * Hiển thị panel
+	 * Làm mới toàn bộ dữ liệu quan trọng sau khi nhập hàng (Requirement: AUTO_REFRESH_DATA_AFTER_IMPORT)
 	 */
-	private void showPanel(JPanel panel) {
-		if (mainContentPanel != null) {
-			mainContentPanel.removeAll();
-			mainContentPanel.add(panel, BorderLayout.CENTER);
-			mainContentPanel.revalidate();
-			mainContentPanel.repaint();
+	public void refreshAllData() {
+		if (sanPhamPanel != null) {
+			sanPhamPanel.loadData();
 		}
-	}
-
-	/**
-	 * Setup permissions
-	 */
-	private void setupPermissions() {
-		if (currentUser.getVaiTro().equalsIgnoreCase("Nhân viên")) {
-			if (menuItems.containsKey("nhaphang")) menuItems.get("nhaphang").setVisible(false);
-			if (menuItems.containsKey("nguoidung")) menuItems.get("nguoidung").setVisible(false);
-			if (menuItems.containsKey("nhacungcap")) menuItems.get("nhacungcap").setVisible(false);
-		} else if (currentUser.getVaiTro().equalsIgnoreCase("Quản lý")) {
-			if (menuItems.containsKey("nguoidung")) menuItems.get("nguoidung").setVisible(false);
+		if (loHangPanel != null) {
+			loHangPanel.loadData();
 		}
 	}
 }

@@ -51,24 +51,38 @@ public class NguoiDungPanel extends JPanel {
 	 * Create the panel.
 	 */
 	public NguoiDungPanel(NguoiDung currentUser) {
-		this.currentUser = currentUser;
-		dao = new NguoiDungDao();
-		initialize();
-		loadData();
-		checkPermission();
+	    this.currentUser = currentUser;
+	    dao = new NguoiDungDao();
+	    initialize();
+	    loadData();
+		if (!"Admin".equals(currentUser.getVaiTro())) {
+			// Disable panel interactions instead of throwing an exception
+			setPermissionsDisabled();
+		}
 	}
+
+	private void setPermissionsDisabled() {
+		btnThem.setEnabled(false);
+		btnSua.setEnabled(false);
+		btnXoa.setEnabled(false);
+		btnLamMoi.setEnabled(false);
+	}
+
 
 	/**
 	 * Kiểm tra quyền truy cập
 	 */
-	private void checkPermission() {
-		if (!currentUser.getVaiTro().equals("Admin")) {
-			JOptionPane.showMessageDialog(this,
-				"Chỉ Admin mới có quyền truy cập chức năng này!",
-				"Không có quyền",
-				JOptionPane.WARNING_MESSAGE);
-		}
+	private boolean checkPermission() {
+	    if (!"Admin".equals(currentUser.getVaiTro())) {
+	        JOptionPane.showMessageDialog(this,
+	            "Chỉ Admin mới có quyền truy cập chức năng này!",
+	            "Không có quyền",
+	            JOptionPane.WARNING_MESSAGE);
+	        return false; // CHẶN
+	    }
+	    return true;
 	}
+
 
 	/**
 	 * Initialize the contents of the panel.

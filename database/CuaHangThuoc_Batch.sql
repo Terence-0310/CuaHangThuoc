@@ -719,13 +719,183 @@ VALUES
 GO
 
 INSERT dbo.NhaCungCap(TenNCC, SoDienThoai, Email, DiaChi)
-VALUES (N'Dược A', N'028111', N'a@ncc.com', N'HCM');
+VALUES
+(N'Dược A', N'028111', N'a@ncc.com', N'HCM'),
+(N'Dược Hậu Giang', N'02923891234', N'dhg@dhg.com', N'Cần Thơ'),
+(N'Pymepharco', N'02573822222', N'info@pymepharco.com', N'Phú Yên'),
+(N'Traphaco', N'02438643646', N'info@traphaco.com', N'Hà Nội'),
+(N'Sanofi Việt Nam', N'02838204500', N'contact@sanofi.vn', N'HCM');
 GO
 
-INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MucTonToiThieu)
-VALUES
-(N'Paracetamol 500mg', N'Hộp', 15000, N'Thuoc', 10),
-(N'Vitamin C',         N'Chai', 50000, N'ThucPhamChucNang', 10);
+/* --- INSERT 150 SẢN PHẨM --- */
+INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MoTa, MucTonToiThieu) VALUES
+-- ===== THUỐC (1-50) =====
+(N'Paracetamol 500mg',      N'Hộp',  15000,  N'Thuoc', N'Giảm đau, hạ sốt',        10),
+(N'Amoxicillin 500mg',      N'Hộp',  25000,  N'Thuoc', N'Kháng sinh penicillin',    10),
+(N'Ibuprofen 400mg',        N'Hộp',  18000,  N'Thuoc', N'Chống viêm, giảm đau',     10),
+(N'Cefuroxim 500mg',        N'Hộp',  85000,  N'Thuoc', N'Kháng sinh cephalosporin', 8),
+(N'Azithromycin 250mg',     N'Hộp',  45000,  N'Thuoc', N'Kháng sinh macrolid',      8),
+(N'Levofloxacin 500mg',     N'Hộp',  65000,  N'Thuoc', N'Kháng sinh quinolone',     8),
+(N'Metformin 850mg',        N'Hộp',  22000,  N'Thuoc', N'Điều trị tiểu đường type 2', 10),
+(N'Amlodipine 5mg',         N'Hộp',  35000,  N'Thuoc', N'Hạ huyết áp',             10),
+(N'Losartan 50mg',          N'Hộp',  42000,  N'Thuoc', N'Điều trị tăng huyết áp',   10),
+(N'Omeprazole 20mg',        N'Hộp',  28000,  N'Thuoc', N'Ức chế bơm proton, dạ dày',10),
+(N'Pantoprazole 40mg',      N'Hộp',  55000,  N'Thuoc', N'Điều trị loét dạ dày',     8),
+(N'Cetirizine 10mg',        N'Hộp',  12000,  N'Thuoc', N'Chống dị ứng',             15),
+(N'Loratadine 10mg',        N'Hộp',  15000,  N'Thuoc', N'Kháng histamine',          15),
+(N'Salbutamol 2mg',         N'Hộp',  20000,  N'Thuoc', N'Giãn phế quản',            10),
+(N'Montelukast 10mg',       N'Hộp',  75000,  N'Thuoc', N'Dự phòng hen suyễn',       8),
+(N'Prednisolone 5mg',       N'Hộp',  18000,  N'Thuoc', N'Chống viêm corticoid',     10),
+(N'Dexamethasone 0.5mg',    N'Hộp',  12000,  N'Thuoc', N'Corticosteroid',           10),
+(N'Diclofenac 75mg',        N'Hộp',  22000,  N'Thuoc', N'Chống viêm NSAID',         10),
+(N'Meloxicam 15mg',         N'Hộp',  30000,  N'Thuoc', N'Giảm đau khớp',            10),
+(N'Ciprofloxacin 500mg',    N'Hộp',  38000,  N'Thuoc', N'Kháng sinh fluoroquinolone',8),
+(N'Clarithromycin 500mg',   N'Hộp',  72000,  N'Thuoc', N'Kháng sinh macrolid',      8),
+(N'Clopidogrel 75mg',       N'Hộp',  55000,  N'Thuoc', N'Chống kết tập tiểu cầu',   8),
+(N'Atorvastatin 20mg',      N'Hộp',  48000,  N'Thuoc', N'Giảm cholesterol',         10),
+(N'Rosuvastatin 10mg',      N'Hộp',  65000,  N'Thuoc', N'Hạ mỡ máu statin',        10),
+(N'Simvastatin 20mg',       N'Hộp',  32000,  N'Thuoc', N'Giảm lipid máu',           10),
+(N'Metronidazole 250mg',    N'Hộp',  15000,  N'Thuoc', N'Kháng khuẩn, kháng nấm',   10),
+(N'Fluconazole 150mg',      N'Viên', 25000,  N'Thuoc', N'Chống nấm',                10),
+(N'Acyclovir 800mg',        N'Hộp',  40000,  N'Thuoc', N'Kháng virus herpes',       8),
+(N'Domperidone 10mg',       N'Hộp',  18000,  N'Thuoc', N'Chống nôn',                10),
+(N'Loperamide 2mg',         N'Hộp',  12000,  N'Thuoc', N'Cầm tiêu chảy',            15),
+(N'Bisacodyl 5mg',          N'Hộp',  10000,  N'Thuoc', N'Nhuận tràng',              15),
+(N'Spironolactone 25mg',    N'Hộp',  35000,  N'Thuoc', N'Lợi tiểu',                 8),
+(N'Furosemide 40mg',        N'Hộp',  15000,  N'Thuoc', N'Lợi tiểu quai',            10),
+(N'Captopril 25mg',         N'Hộp',  20000,  N'Thuoc', N'Ức chế men chuyển ACE',     10),
+(N'Enalapril 5mg',          N'Hộp',  25000,  N'Thuoc', N'Hạ huyết áp ACE',          10),
+(N'Glimepiride 2mg',        N'Hộp',  45000,  N'Thuoc', N'Hạ đường huyết',           8),
+(N'Gliclazide 30mg MR',     N'Hộp',  55000,  N'Thuoc', N'Tiểu đường type 2',        8),
+(N'Aspirin 81mg',           N'Hộp',  18000,  N'Thuoc', N'Chống kết tập tiểu cầu',   15),
+(N'Tramadol 50mg',          N'Hộp',  35000,  N'Thuoc', N'Giảm đau opioid nhẹ',      5),
+(N'Gabapentin 300mg',       N'Hộp',  60000,  N'Thuoc', N'Giảm đau thần kinh',       5),
+(N'Amitriptyline 25mg',     N'Hộp',  15000,  N'Thuoc', N'Chống trầm cảm',           8),
+(N'Sertraline 50mg',        N'Hộp',  75000,  N'Thuoc', N'Chống trầm cảm SSRI',      5),
+(N'Diazepam 5mg',           N'Hộp',  20000,  N'Thuoc', N'An thần, giãn cơ',         5),
+(N'Alprazolam 0.5mg',       N'Hộp',  28000,  N'Thuoc', N'Chống lo âu',              5),
+(N'Phenobarbital 100mg',    N'Hộp',  12000,  N'Thuoc', N'Chống co giật',             8),
+(N'Carbamazepine 200mg',    N'Hộp',  30000,  N'Thuoc', N'Chống động kinh',          8),
+(N'Levothyroxine 50mcg',    N'Hộp',  45000,  N'Thuoc', N'Hormon tuyến giáp',        10),
+(N'Doxycycline 100mg',      N'Hộp',  22000,  N'Thuoc', N'Kháng sinh tetracycline',   10),
+(N'Nifedipine 20mg',        N'Hộp',  25000,  N'Thuoc', N'Chẹn kênh canxi',          10),
+(N'Bisoprolol 5mg',         N'Hộp',  42000,  N'Thuoc', N'Chẹn beta, hạ HA',         10);
+GO
+
+INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MoTa, MucTonToiThieu) VALUES
+-- ===== DƯỢC MỸ PHẨM (51-80) =====
+(N'Kem chống nắng La Roche-Posay SPF50', N'Tuýp', 420000, N'DuocMiPham', N'Chống nắng phổ rộng', 5),
+(N'Serum Vitamin C Obagi',               N'Chai', 650000, N'DuocMiPham', N'Dưỡng sáng da',       5),
+(N'Kem dưỡng ẩm Cetaphil',              N'Hũ',   280000, N'DuocMiPham', N'Dưỡng ẩm mọi loại da',5),
+(N'Nước tẩy trang Bioderma 500ml',       N'Chai', 350000, N'DuocMiPham', N'Tẩy trang micellar',  5),
+(N'Gel rửa mặt CeraVe',                 N'Chai', 320000, N'DuocMiPham', N'Làm sạch dịu nhẹ',    5),
+(N'Kem trị mụn Differin 0.1%',          N'Tuýp', 180000, N'DuocMiPham', N'Adapalene trị mụn',    5),
+(N'Kem trị sẹo Dermatix Ultra',         N'Tuýp', 280000, N'DuocMiPham', N'Trị sẹo silicone',     5),
+(N'Dầu gội Head & Shoulders Clinical',  N'Chai', 155000, N'DuocMiPham', N'Trị gàu',              8),
+(N'Toner Hada Labo Gokujyun',           N'Chai', 260000, N'DuocMiPham', N'Cấp ẩm hyaluronic',    5),
+(N'Kem mắt Vichy Mineral 89',           N'Tuýp', 480000, N'DuocMiPham', N'Chống nhăn mắt',       3),
+(N'Serum retinol The Ordinary 1%',       N'Chai', 350000, N'DuocMiPham', N'Chống lão hóa',        5),
+(N'Kem body Vaseline 400ml',            N'Chai', 120000, N'DuocMiPham', N'Dưỡng da toàn thân',   8),
+(N'Xịt khoáng Avène 300ml',             N'Chai', 320000, N'DuocMiPham', N'Làm dịu da nhạy cảm', 5),
+(N'Kem chống nắng Anessa Perfect UV',    N'Chai', 520000, N'DuocMiPham', N'Chống nắng lâu trôi',  3),
+(N'Sữa rửa mặt SVR Sebiaclear',        N'Tuýp', 280000, N'DuocMiPham', N'Kiểm soát dầu',        5),
+(N'Mặt nạ đất sét Innisfree',           N'Hũ',   180000, N'DuocMiPham', N'Thải độc da',          5),
+(N'Kem nền Maybelline Fit Me',          N'Tuýp', 150000, N'DuocMiPham', N'Kem nền phủ nhẹ',      5),
+(N'Son dưỡng DHC Lip Cream',            N'Tuýp', 180000, N'DuocMiPham', N'Dưỡng môi vitamin E',  8),
+(N'Kem trị nám Eucerin Pigment Control',N'Tuýp', 550000, N'DuocMiPham', N'Giảm nám sạm',         3),
+(N'Tẩy tế bào chết Paula Choice BHA',   N'Chai', 680000, N'DuocMiPham', N'AHA/BHA tẩy da chết',  3),
+(N'Nước hoa hồng Thayers',              N'Chai', 250000, N'DuocMiPham', N'Se khít lỗ chân lông', 5),
+(N'Kem tay Neutrogena Intensive',        N'Tuýp',  85000, N'DuocMiPham', N'Dưỡng tay khô nẻ',    8),
+(N'Dầu dưỡng tóc Moroccanoil',          N'Chai', 750000, N'DuocMiPham', N'Phục hồi tóc hư tổn',  3),
+(N'Kem chống hăm Bepanthen',            N'Tuýp', 120000, N'DuocMiPham', N'Bảo vệ da em bé',     8),
+(N'Gel trị mụn Benzac AC 5%',           N'Tuýp', 150000, N'DuocMiPham', N'Benzoyl peroxide',     5),
+(N'Sữa tắm Eucerin pH5',               N'Chai', 280000, N'DuocMiPham', N'Dưỡng ẩm khi tắm',    5),
+(N'Kem dưỡng Clinique Moisture Surge',  N'Hũ',   800000, N'DuocMiPham', N'Cấp ẩm 48h',          3),
+(N'Serum HA The Ordinary',              N'Chai', 220000, N'DuocMiPham', N'Hyaluronic acid 2%',   5),
+(N'Kem chống nắng Skin Aqua Tone Up',   N'Tuýp', 180000, N'DuocMiPham', N'Chống nắng nâng tông', 5),
+(N'Dầu gội trị rụng tóc Ducray',        N'Chai', 380000, N'DuocMiPham', N'Kích thích mọc tóc',   3);
+GO
+
+INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MoTa, MucTonToiThieu) VALUES
+-- ===== THỰC PHẨM CHỨC NĂNG (81-120) =====
+(N'Vitamin C 1000mg DHC',               N'Chai',  150000, N'ThucPhamChucNang', N'Tăng cường miễn dịch',     10),
+(N'Omega 3 Fish Oil 1000mg',            N'Chai',  350000, N'ThucPhamChucNang', N'Bổ sung DHA EPA',          8),
+(N'Vitamin D3 1000IU',                  N'Chai',  150000, N'ThucPhamChucNang', N'Hỗ trợ hấp thu canxi',     10),
+(N'Canxi Nano MK7',                     N'Hộp',   280000, N'ThucPhamChucNang', N'Bổ sung canxi xương khớp', 10),
+(N'Vitamin E 400IU Kirkland',           N'Chai',  320000, N'ThucPhamChucNang', N'Chống oxy hóa',            8),
+(N'Sắt Folic Acid',                     N'Hộp',    85000, N'ThucPhamChucNang', N'Bổ máu cho bà bầu',        10),
+(N'Kẽm Zinc Gluconate 70mg',            N'Chai',  120000, N'ThucPhamChucNang', N'Tăng cường sức khỏe',      10),
+(N'B Complex Blackmores',               N'Chai',  280000, N'ThucPhamChucNang', N'Nhóm vitamin B tổng hợp',  8),
+(N'Glucosamine 1500mg',                 N'Chai',  450000, N'ThucPhamChucNang', N'Hỗ trợ xương khớp',        8),
+(N'Collagen Type 1&3 Neocell',          N'Chai',  550000, N'ThucPhamChucNang', N'Đẹp da, chống lão hóa',    5),
+(N'Probiotics 50 Billion CFU',          N'Chai',  420000, N'ThucPhamChucNang', N'Men vi sinh đường ruột',    5),
+(N'Melatonin 5mg',                      N'Chai',  180000, N'ThucPhamChucNang', N'Hỗ trợ giấc ngủ',          8),
+(N'Multivitamin Centrum Adults',        N'Chai',  380000, N'ThucPhamChucNang', N'Đa vitamin tổng hợp',      8),
+(N'Lutein 20mg Eye Support',            N'Chai',  320000, N'ThucPhamChucNang', N'Bổ mắt, chống ánh sáng xanh',5),
+(N'Coenzyme Q10 200mg',                 N'Chai',  480000, N'ThucPhamChucNang', N'Hỗ trợ tim mạch',          5),
+(N'Spirulina 500mg',                    N'Chai',  250000, N'ThucPhamChucNang', N'Tảo xoắn dinh dưỡng',      8),
+(N'Đông trùng hạ thảo viên',            N'Hộp',   650000, N'ThucPhamChucNang', N'Bổ phổi, tăng sức bền',    3),
+(N'Sâm Hàn Quốc 6 năm tuổi',           N'Hộp',   980000, N'ThucPhamChucNang', N'Bổ khí huyết',             3),
+(N'Bột đạm Whey Protein',               N'Hộp',   750000, N'ThucPhamChucNang', N'Bổ sung protein cơ bắp',   5),
+(N'Dầu cá Salmon Oil Kid',              N'Chai',  280000, N'ThucPhamChucNang', N'DHA cho trẻ em',           8),
+(N'Viên uống tỏi đen',                  N'Hộp',   350000, N'ThucPhamChucNang', N'Hỗ trợ tim mạch',          5),
+(N'Enzyme tiêu hóa Digestive',          N'Chai',  220000, N'ThucPhamChucNang', N'Hỗ trợ tiêu hóa',          8),
+(N'Mầm đậu nành Isoflavone',            N'Chai',  180000, N'ThucPhamChucNang', N'Cân bằng nội tiết tố nữ', 8),
+(N'Vitamin A 10000IU',                  N'Chai',  120000, N'ThucPhamChucNang', N'Bổ mắt, đẹp da',           10),
+(N'Biotin 5000mcg',                     N'Chai',  250000, N'ThucPhamChucNang', N'Đẹp tóc da móng',          8),
+(N'Curcumin Nano nghệ vàng',            N'Hộp',   320000, N'ThucPhamChucNang', N'Chống viêm dạ dày',        5),
+(N'L-Arginine 1000mg',                  N'Chai',  380000, N'ThucPhamChucNang', N'Hỗ trợ tuần hoàn',         5),
+(N'Viên uống giảm cân Detox',           N'Hộp',   280000, N'ThucPhamChucNang', N'Hỗ trợ giảm cân',          5),
+(N'Vitamin K2 MK7 100mcg',              N'Chai',  280000, N'ThucPhamChucNang', N'Hỗ trợ hấp thu canxi',     8),
+(N'Cốm bổ Lysine cho bé',              N'Hộp',   120000, N'ThucPhamChucNang', N'Giúp bé ăn ngon',          10),
+(N'Bổ mắt Bilberry 1000mg',             N'Chai',  300000, N'ThucPhamChucNang', N'Hỗ trợ thị lực',           5),
+(N'Men Lactobacillus trẻ em',           N'Hộp',   180000, N'ThucPhamChucNang', N'Hỗ trợ tiêu hóa bé',      8),
+(N'Sữa Ensure Gold 850g',               N'Hộp',   680000, N'ThucPhamChucNang', N'Dinh dưỡng người lớn',     5),
+(N'Bột ngũ cốc dinh dưỡng',             N'Hộp',   150000, N'ThucPhamChucNang', N'Bổ sung chất xơ',          10),
+(N'Viên uống bổ gan Hovenia',           N'Hộp',   280000, N'ThucPhamChucNang', N'Giải độc gan',             5),
+(N'Magnesium Bisglycinate 200mg',       N'Chai',  280000, N'ThucPhamChucNang', N'Giảm chuột rút, stress',   8),
+(N'Viên uống tóc Perfectil',            N'Hộp',   450000, N'ThucPhamChucNang', N'Đẹp tóc da móng',          5),
+(N'Vitamin C kẽm sủi bọt',              N'Tuýp',   45000, N'ThucPhamChucNang', N'Bổ sung vitamin C nhanh', 15),
+(N'Tảo Chlorella 500mg',                N'Chai',  220000, N'ThucPhamChucNang', N'Thải độc cơ thể',          8),
+(N'Nước yến sào Sanest',                N'Lốc',   280000, N'ThucPhamChucNang', N'Bổ dưỡng cơ thể',          5);
+GO
+
+INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MoTa, MucTonToiThieu) VALUES
+-- ===== CHĂM SÓC CÁ NHÂN (121-140) =====
+(N'Nước rửa tay Lifebuoy 500ml',        N'Chai',   45000, N'ChamSocCaNhan', N'Diệt khuẩn 99.9%',         15),
+(N'Kem đánh răng Sensodyne',            N'Tuýp',   65000, N'ChamSocCaNhan', N'Chống ê buốt',             10),
+(N'Bàn chải Oral-B Pro Expert',         N'Cái',    45000, N'ChamSocCaNhan', N'Lông mềm chăm sóc nướu',  10),
+(N'Nước súc miệng Listerine 750ml',     N'Chai',   85000, N'ChamSocCaNhan', N'Kháng khuẩn miệng',        8),
+(N'Dung dịch rửa mũi NaCl 0.9%',       N'Chai',   25000, N'ChamSocCaNhan', N'Vệ sinh mũi hàng ngày',   15),
+(N'Băng vệ sinh Diana Sensi',           N'Gói',    28000, N'ChamSocCaNhan', N'Siêu thấm, chống tràn',    15),
+(N'Khăn ướt Bobby Care 100 tờ',         N'Gói',    35000, N'ChamSocCaNhan', N'Kháng khuẩn, an toàn bé', 10),
+(N'Sữa tắm Dove dưỡng ẩm 900ml',       N'Chai',   120000, N'ChamSocCaNhan', N'Dưỡng ẩm gấp 4 lần',     8),
+(N'Dầu gội Clear Men 650ml',            N'Chai',   110000, N'ChamSocCaNhan', N'Trị gàu cho nam',          8),
+(N'Xịt khử mùi Nivea Men 150ml',        N'Chai',    65000, N'ChamSocCaNhan', N'Khử mùi 48h',              10),
+(N'Bông tẩy trang Ipek 150 miếng',      N'Gói',    35000, N'ChamSocCaNhan', N'Mềm mịn, không xù',       10),
+(N'Kem cạo râu Gillette',               N'Tuýp',   55000, N'ChamSocCaNhan', N'Bảo vệ da khi cạo',       8),
+(N'Kem chống muỗi Soffell 60ml',        N'Tuýp',   22000, N'ChamSocCaNhan', N'Chống muỗi 8 giờ',        15),
+(N'Gel rửa tay khô On1 500ml',          N'Chai',   55000, N'ChamSocCaNhan', N'Diệt khuẩn tay nhanh',    10),
+(N'Nước giặt Ariel Matic 3.25kg',       N'Can',   185000, N'ChamSocCaNhan', N'Giặt sạch sâu, thơm lâu', 5),
+(N'Tã dán Huggies Dry NB',              N'Gói',   180000, N'ChamSocCaNhan', N'Siêu thấm cho bé sơ sinh',8),
+(N'Lăn khử mùi Rexona Women',           N'Chai',   55000, N'ChamSocCaNhan', N'Chống mồ hôi 48h',        10),
+(N'Dầu xả Pantene 480ml',               N'Chai',   95000, N'ChamSocCaNhan', N'Phục hồi tóc hư',          8),
+(N'Nước hoa Enchanteur Charming',        N'Chai',  185000, N'ChamSocCaNhan', N'Hương tự nhiên Pháp',      5),
+(N'Bông gòn y tế cuộn 100g',            N'Cuộn',   15000, N'ChamSocCaNhan', N'Bông gòn tiệt trùng',     15);
+GO
+
+INSERT dbo.SanPham(TenSanPham, DonViTinh, GiaBanDeXuat, LoaiSanPham, MoTa, MucTonToiThieu) VALUES
+-- ===== THIẾT BỊ Y TẾ (141-150) =====
+(N'Nhiệt kế điện tử Omron MC-246',      N'Cái',    85000,  N'ThietBiYTe', N'Đo nhiệt nách/miệng',      3),
+(N'Máy đo huyết áp Omron HEM-7156',     N'Cái',   1250000, N'ThietBiYTe', N'Đo bắp tay tự động',       3),
+(N'Máy đo đường huyết Accu-Chek',       N'Cái',    850000, N'ThietBiYTe', N'Kiểm tra glucose nhanh',    3),
+(N'Máy xông mũi họng Omron NE-C28',     N'Cái',    980000, N'ThietBiYTe', N'Xông hơi khí dung',         3),
+(N'Máy đo SpO2 kẹp ngón',               N'Cái',    350000, N'ThietBiYTe', N'Đo nồng độ oxy máu',        5),
+(N'Nẹp cổ tay y khoa',                  N'Cái',    120000, N'ThietBiYTe', N'Hỗ trợ cổ tay bong gân',    5),
+(N'Bộ sơ cứu gia đình 25 món',          N'Bộ',    250000, N'ThietBiYTe', N'Đồ sơ cứu cơ bản',          5),
+(N'Khẩu trang y tế 3 lớp (50 cái)',     N'Hộp',    45000,  N'ThietBiYTe', N'Kháng khuẩn, BFE 99%',     20),
+(N'Găng tay y tế latex (100 cái)',       N'Hộp',    85000,  N'ThietBiYTe', N'Không bột, tiệt trùng',    10),
+(N'Cân sức khỏe điện tử Tanita',        N'Cái',    480000, N'ThietBiYTe', N'Đo BMI, mỡ cơ thể',        3);
 GO
 
 /* Demo nhập hàng: tạo phiếu nhập + nhập 2 lô khác hạn cho cùng sản phẩm */
@@ -769,6 +939,87 @@ SELECT * FROM dbo.v_CanhBaoLoHetHan;
 
 EXEC dbo.sp_CanhBao_LoSapHetHan @SoNgay=50;
 EXEC dbo.sp_CanhBao_LoHetHan;
+GO
+
+/* =========================
+   13) PROC: PHÂN TRANG SẢN PHẨM (v2)
+   - Hỗ trợ tìm kiếm (@Keyword)
+   - Hỗ trợ sắp xếp động (@SortColumn, @SortOrder)
+   - Dùng OFFSET / FETCH NEXT
+   - Trả về TotalRows + TotalPages
+   ========================= */
+CREATE OR ALTER PROC dbo.sp_SanPham_GetPage
+    @PageNumber  INT = 1,
+    @PageSize    INT = 10,
+    @Keyword     NVARCHAR(255) = NULL,
+    @SortColumn  NVARCHAR(50)  = N'MaSanPham',
+    @SortOrder   NVARCHAR(4)   = N'ASC'
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Validate sort order
+    IF @SortOrder NOT IN (N'ASC', N'DESC')
+        SET @SortOrder = N'ASC';
+
+    -- Validate sort column
+    IF @SortColumn NOT IN (N'MaSanPham', N'TenSanPham', N'DonViTinh',
+                           N'GiaBanDeXuat', N'LoaiSanPham', N'MoTa', N'MucTonToiThieu')
+        SET @SortColumn = N'MaSanPham';
+
+    -- Trim keyword
+    SET @Keyword = LTRIM(RTRIM(@Keyword));
+    IF @Keyword = N'' SET @Keyword = NULL;
+
+    -- Count total rows (keyword-aware)
+    DECLARE @TotalRows INT;
+    SELECT @TotalRows = COUNT(*)
+    FROM dbo.SanPham
+    WHERE DaXoa = 0
+      AND (@Keyword IS NULL OR TenSanPham LIKE N'%' + @Keyword + N'%');
+
+    -- Query with dynamic sort
+    SELECT
+        sp.MaSanPham,
+        sp.TenSanPham,
+        sp.DonViTinh,
+        sp.GiaBanDeXuat,
+        sp.LoaiSanPham,
+        sp.MoTa,
+        sp.MucTonToiThieu,
+        ISNULL(tk.TongTon, 0) AS TongTon,
+        @TotalRows              AS TotalRows,
+        CEILING(CAST(@TotalRows AS FLOAT) / @PageSize) AS TotalPages
+    FROM dbo.SanPham sp
+    LEFT JOIN dbo.v_TonKhoSanPham tk ON tk.MaSanPham = sp.MaSanPham
+    WHERE sp.DaXoa = 0
+      AND (@Keyword IS NULL OR sp.TenSanPham LIKE N'%' + @Keyword + N'%')
+    ORDER BY
+        CASE WHEN @SortOrder = N'ASC' THEN
+            CASE @SortColumn
+                WHEN N'MaSanPham'      THEN RIGHT('0000000000' + CAST(sp.MaSanPham AS NVARCHAR), 10)
+                WHEN N'TenSanPham'     THEN sp.TenSanPham
+                WHEN N'DonViTinh'      THEN sp.DonViTinh
+                WHEN N'GiaBanDeXuat'   THEN RIGHT('0000000000' + CAST(CAST(sp.GiaBanDeXuat AS BIGINT) AS NVARCHAR), 10)
+                WHEN N'LoaiSanPham'    THEN sp.LoaiSanPham
+                WHEN N'MoTa'           THEN ISNULL(sp.MoTa, N'')
+                WHEN N'MucTonToiThieu' THEN RIGHT('0000000000' + CAST(sp.MucTonToiThieu AS NVARCHAR), 10)
+            END
+        END ASC,
+        CASE WHEN @SortOrder = N'DESC' THEN
+            CASE @SortColumn
+                WHEN N'MaSanPham'      THEN RIGHT('0000000000' + CAST(sp.MaSanPham AS NVARCHAR), 10)
+                WHEN N'TenSanPham'     THEN sp.TenSanPham
+                WHEN N'DonViTinh'      THEN sp.DonViTinh
+                WHEN N'GiaBanDeXuat'   THEN RIGHT('0000000000' + CAST(CAST(sp.GiaBanDeXuat AS BIGINT) AS NVARCHAR), 10)
+                WHEN N'LoaiSanPham'    THEN sp.LoaiSanPham
+                WHEN N'MoTa'           THEN ISNULL(sp.MoTa, N'')
+                WHEN N'MucTonToiThieu' THEN RIGHT('0000000000' + CAST(sp.MucTonToiThieu AS NVARCHAR), 10)
+            END
+        END DESC
+    OFFSET (@PageNumber - 1) * @PageSize ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END
 GO
 
 ALTER TABLE dbo.PhieuNhap

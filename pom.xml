@@ -10,6 +10,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<maven.compiler.source>17</maven.compiler.source>
 		<maven.compiler.target>17</maven.compiler.target>
 	</properties>
@@ -19,16 +20,10 @@
 		<dependency>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>
-			<version>8.4.1.jre8</version>
+			<version>12.8.1.jre11</version>
 		</dependency>
 
-		<!-- Lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>1.18.42</version>
-			<scope>provided</scope>
-		</dependency>
+
 
 		<!-- HikariCP Connection Pooling -->
 		<dependency>
@@ -68,6 +63,7 @@
 				<version>3.10.1</version>
 				<configuration>
 					<release>17</release>
+					<encoding>UTF-8</encoding>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -76,6 +72,30 @@
 				<version>3.1.0</version>
 				<configuration>
 					<mainClass>app.LoginFrame</mainClass>
+					<arguments>
+						<argument>-Dfile.encoding=UTF-8</argument>
+						<argument>-Dstdout.encoding=UTF-8</argument>
+						<argument>-Dsun.stdout.encoding=UTF-8</argument>
+						<argument>-Dsun.stderr.encoding=UTF-8</argument>
+					</arguments>
+					<systemProperties>
+						<systemProperty>
+							<key>file.encoding</key>
+							<value>UTF-8</value>
+						</systemProperty>
+						<systemProperty>
+							<key>stdout.encoding</key>
+							<value>UTF-8</value>
+						</systemProperty>
+						<systemProperty>
+							<key>sun.stdout.encoding</key>
+							<value>UTF-8</value>
+						</systemProperty>
+						<systemProperty>
+							<key>sun.stderr.encoding</key>
+							<value>UTF-8</value>
+						</systemProperty>
+					</systemProperties>
 				</configuration>
 				<executions>
 					<execution>

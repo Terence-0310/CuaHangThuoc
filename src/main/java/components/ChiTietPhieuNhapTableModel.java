@@ -13,11 +13,11 @@ public class ChiTietPhieuNhapTableModel extends DefaultTableModel {
 	public ChiTietPhieuNhapTableModel() {
 		addColumn("Mã SP");
 		addColumn("Tên sản phẩm");
-		addColumn("Số lô");
+		addColumn("Mã số lô hàng");
 		addColumn("Hạn sử dụng");
 		addColumn("Giá nhập");
 		addColumn("Số lượng");
-		addColumn("Thành tiền");
+		addColumn("Tổng giá trị mục");
 	}
 
 	@Override

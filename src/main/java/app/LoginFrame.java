@@ -1,6 +1,5 @@
 package app;
 
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 
@@ -16,10 +15,7 @@ import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
-
 import common.ColorScheme;
-import common.IconHelper;
 import dao.NguoiDungDao;
 import entity.NguoiDung;
 
@@ -52,7 +48,7 @@ public class LoginFrame extends JFrame {
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		setResizable(false); // Không cho phép resize
 		setLocationRelativeTo(null); // Căn giữa màn hình
-		
+
 		// Sử dụng pack() để tự động tính kích thước
 		var contentPane = new javax.swing.JPanel();
 		contentPane.setBackground(ColorScheme.BACKGROUND);
@@ -71,20 +67,20 @@ public class LoginFrame extends JFrame {
 		titlePanel.setOpaque(false);
 		titlePanel.setLayout(new java.awt.BorderLayout());
 		titlePanel.setBorder(new EmptyBorder(0, 0, 30, 0));
-		
+
 		var lblTitle = new JLabel("CỬA HÀNG THUỐC");
 		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 28));
 		lblTitle.setForeground(ColorScheme.PRIMARY_DARK);
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
 		titlePanel.add(lblTitle, java.awt.BorderLayout.CENTER);
-		
+
 		var lblSubtitle = new JLabel("Hệ thống quản lý bán hàng");
 		lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 		lblSubtitle.setForeground(ColorScheme.TEXT_SECONDARY);
 		lblSubtitle.setHorizontalAlignment(SwingConstants.CENTER);
 		lblSubtitle.setBorder(new EmptyBorder(8, 0, 0, 0));
 		titlePanel.add(lblSubtitle, java.awt.BorderLayout.SOUTH);
-		
+
 		mainContainer.add(titlePanel, java.awt.BorderLayout.NORTH);
 
 		// Form Panel
@@ -92,14 +88,13 @@ public class LoginFrame extends JFrame {
 		formPanel.setBackground(ColorScheme.PANEL_BG);
 		// Add subtle drop shadow if possible, otherwise simple border
 		formPanel.setBorder(javax.swing.BorderFactory.createCompoundBorder(
-			javax.swing.BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
-			new EmptyBorder(35, 35, 35, 35)
-		));
+				javax.swing.BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
+				new EmptyBorder(35, 35, 35, 35)));
 		formPanel.setLayout(new java.awt.GridBagLayout());
 		var gbc = new java.awt.GridBagConstraints();
 		gbc.insets = new java.awt.Insets(5, 5, 15, 5);
 		gbc.anchor = java.awt.GridBagConstraints.WEST;
-		
+
 		// Username
 		gbc.gridx = 0;
 		gbc.gridy = 0;
@@ -116,11 +111,11 @@ public class LoginFrame extends JFrame {
 		txtUsername.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 		txtUsername.setPreferredSize(new java.awt.Dimension(300, 40));
 		// Setup Leading Icon
-		// txtUsername.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, 
-		// 	IconHelper.getIcon(MaterialDesignA.ACCOUNT, 18, ColorScheme.TEXT_SECONDARY));
+		// txtUsername.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
+		// IconHelper.getIcon(MaterialDesignA.ACCOUNT, 18, ColorScheme.TEXT_SECONDARY));
 		txtUsername.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nhập tên đăng nhập");
 		txtUsername.putClientProperty(FlatClientProperties.STYLE, "arc: 10"); // Round corners
-		
+
 		txtUsername.setBackground(ColorScheme.INPUT_FOCUS);
 		txtUsername.addActionListener(e -> txtPassword.requestFocus());
 		formPanel.add(txtUsername, gbc);
@@ -141,11 +136,11 @@ public class LoginFrame extends JFrame {
 		txtPassword.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 		txtPassword.setPreferredSize(new java.awt.Dimension(300, 40));
 		// Setup Leading Icon and Reveal Button
-		// txtPassword.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, 
-		// 	IconHelper.getIcon(MaterialDesignA.ACCOUNT, 18, ColorScheme.TEXT_SECONDARY));
-		txtPassword.putClientProperty(FlatClientProperties.STYLE, "showRevealButton: true; arc: 10");
+		// txtPassword.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
+		// IconHelper.getIcon(MaterialDesignA.ACCOUNT, 18, ColorScheme.TEXT_SECONDARY));
+		txtPassword.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
 		txtPassword.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nhập mật khẩu");
-		
+
 		txtPassword.setBackground(ColorScheme.INPUT_FOCUS);
 		txtPassword.addActionListener(this::btnLoginActionPerformed);
 		formPanel.add(txtPassword, gbc);
@@ -171,6 +166,7 @@ public class LoginFrame extends JFrame {
 			public void mouseEntered(java.awt.event.MouseEvent e) {
 				btnLogin.setBackground(ColorScheme.PRIMARY_HOVER);
 			}
+
 			@Override
 			public void mouseExited(java.awt.event.MouseEvent e) {
 				btnLogin.setBackground(ColorScheme.PRIMARY);
@@ -192,6 +188,7 @@ public class LoginFrame extends JFrame {
 			public void mouseEntered(java.awt.event.MouseEvent e) {
 				btnExit.setBackground(ColorScheme.DANGER_HOVER);
 			}
+
 			@Override
 			public void mouseExited(java.awt.event.MouseEvent e) {
 				btnExit.setBackground(ColorScheme.DANGER);
@@ -204,7 +201,7 @@ public class LoginFrame extends JFrame {
 
 		// Pack để tự động tính kích thước
 		pack();
-		
+
 		// Đảm bảo form không thể resize
 		setResizable(false);
 		setLocationRelativeTo(null);
@@ -222,18 +219,18 @@ public class LoginFrame extends JFrame {
 
 		if (username.isEmpty()) {
 			JOptionPane.showMessageDialog(this,
-				"Vui lòng nhập tên đăng nhập!",
-				"Thông báo",
-				JOptionPane.WARNING_MESSAGE);
+					"Vui lòng nhập tên đăng nhập!",
+					"Thông báo",
+					JOptionPane.WARNING_MESSAGE);
 			txtUsername.requestFocus();
 			return;
 		}
 
 		if (password.isEmpty()) {
 			JOptionPane.showMessageDialog(this,
-				"Vui lòng nhập mật khẩu!",
-				"Thông báo",
-				JOptionPane.WARNING_MESSAGE);
+					"Vui lòng nhập mật khẩu!",
+					"Thông báo",
+					JOptionPane.WARNING_MESSAGE);
 			txtPassword.requestFocus();
 			return;
 		}
@@ -245,9 +242,9 @@ public class LoginFrame extends JFrame {
 		if (nguoiDung != null) {
 			// Đăng nhập thành công
 			JOptionPane.showMessageDialog(this,
-				"Đăng nhập thành công!\nXin chào: " + nguoiDung.getHoTen(),
-				"Thông báo",
-				JOptionPane.INFORMATION_MESSAGE);
+					"Đăng nhập thành công!\nXin chào: " + nguoiDung.getHoTen(),
+					"Thông báo",
+					JOptionPane.INFORMATION_MESSAGE);
 
 			// Mở MainFrame
 			this.dispose();
@@ -256,9 +253,9 @@ public class LoginFrame extends JFrame {
 		} else {
 			// Đăng nhập thất bại
 			JOptionPane.showMessageDialog(this,
-				"Tên đăng nhập hoặc mật khẩu không đúng!",
-				"Lỗi đăng nhập",
-				JOptionPane.ERROR_MESSAGE);
+					"Tên đăng nhập hoặc mật khẩu không đúng!",
+					"Lỗi đăng nhập",
+					JOptionPane.ERROR_MESSAGE);
 			txtPassword.setText("");
 			txtUsername.requestFocus();
 		}
@@ -268,10 +265,16 @@ public class LoginFrame extends JFrame {
 	 * Main method
 	 */
 	public static void main(String[] args) {
+		// Ép console xuất UTF-8 để hiển thị tiếng Việt và Emoji chuẩn (Requirement: FORCE_SYSTEM_OUT_UTF8)
+		try {
+			System.setOut(new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, java.nio.charset.StandardCharsets.UTF_8.name()));
+			System.setErr(new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.err), true, java.nio.charset.StandardCharsets.UTF_8.name()));
+		} catch (Exception e) {}
+		
 		// Sử dụng FlatLaf với theme pastel
 		try {
 			UIManager.setLookAndFeel("com.formdev.flatlaf.FlatLightLaf");
-			
+
 			// Customize FlatLaf colors
 			UIManager.put("Panel.background", ColorScheme.BACKGROUND);
 			UIManager.put("Button.arc", 12);

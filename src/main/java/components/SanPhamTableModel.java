@@ -23,13 +23,13 @@ public class SanPhamTableModel extends DefaultTableModel {
 	@Override
 	public Class<?> getColumnClass(int columnIndex) {
 		return switch (columnIndex) {
-			case 0 -> Integer.class;  // Mã SP
-			case 1 -> String.class;   // Tên sản phẩm
-			case 2 -> String.class;   // Đơn vị tính
+			case 0 -> Integer.class; // Mã SP
+			case 1 -> String.class; // Tên sản phẩm
+			case 2 -> String.class; // Đơn vị tính
 			case 3 -> java.math.BigDecimal.class; // Giá bán
-			case 4 -> String.class;   // Loại
-			case 5 -> String.class;   // Mô tả
-			case 6 -> Integer.class;  // Mức tồn tối thiểu
+			case 4 -> String.class; // Loại
+			case 5 -> String.class; // Mô tả
+			case 6 -> Integer.class; // Mức tồn tối thiểu
 			default -> String.class;
 		};
 	}
@@ -37,5 +37,14 @@ public class SanPhamTableModel extends DefaultTableModel {
 	@Override
 	public boolean isCellEditable(int row, int column) {
 		return false; // Không cho edit trực tiếp trên table
+	}
+
+	/**
+	 * Đổi tên cột động (dùng cho hiển thị mũi tên sắp xếp ▲ ▼)
+	 */
+	public void setColumnName(int columnIndex, String name) {
+		if (columnIndex >= 0 && columnIndex < columnIdentifiers.size()) {
+			columnIdentifiers.set(columnIndex, name);
+		}
 	}
 }

@@ -65,12 +65,17 @@ public class LoHangPanel extends JPanel {
 		setBackground(ColorScheme.BACKGROUND);
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-		var titlePanel = new JPanel(new BorderLayout());
+		var titlePanel = new JPanel(new BorderLayout(0, 10));
 		titlePanel.setOpaque(false);
+		titlePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
 		var lblTitle = new JLabel("Quản lý lô hàng");
 		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
 		lblTitle.setForeground(ColorScheme.TEXT_PRIMARY);
 		titlePanel.add(lblTitle, BorderLayout.WEST);
+		
+		var infoBanner = UIHelper.createInfoBanner("<html>ℹ️ <b>Nghiệp vụ Lô hàng:</b> Quản lý chi tiết từng lô thuốc, theo dõi tồn kho và cảnh báo <b>hạn sử dụng</b> thực tế.</html>");
+		titlePanel.add(infoBanner, BorderLayout.SOUTH);
+		
 		add(titlePanel, BorderLayout.NORTH);
 
 		var mainPanel = new JPanel(new BorderLayout(15, 0));
@@ -92,13 +97,12 @@ public class LoHangPanel extends JPanel {
 		var panel = new JPanel();
 		panel.setBackground(ColorScheme.PANEL_BG);
 		panel.setBorder(new TitledBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
-			"Thông tin lô hàng",
-			TitledBorder.LEADING,
-			TitledBorder.TOP,
-			new Font("Segoe UI", Font.BOLD, 14),
-			ColorScheme.TEXT_PRIMARY
-		));
+				BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
+				"Thông tin lô hàng",
+				TitledBorder.LEADING,
+				TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 14),
+				ColorScheme.TEXT_PRIMARY));
 		panel.setLayout(null);
 		panel.setPreferredSize(new java.awt.Dimension(350, 0));
 
@@ -188,7 +192,7 @@ public class LoHangPanel extends JPanel {
 		lblTrangThai.setBounds(20, y, labelWidth, 25);
 		panel.add(lblTrangThai);
 
-		comboTrangThai = new JComboBox<>(new String[]{"Đang bán", "Ngưng bán", "Hết hàng"});
+		comboTrangThai = new JComboBox<>(new String[] { "Đang bán", "Ngưng bán", "Hết hàng" });
 		comboTrangThai.setBounds(140, y, fieldWidth, fieldHeight);
 		panel.add(comboTrangThai);
 
@@ -216,48 +220,71 @@ public class LoHangPanel extends JPanel {
 		var panel = new JPanel(new BorderLayout());
 		panel.setBackground(ColorScheme.PANEL_BG);
 		panel.setBorder(new TitledBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
-			"Danh sách lô hàng",
-			TitledBorder.LEADING,
-			TitledBorder.TOP,
-			new Font("Segoe UI", Font.BOLD, 14),
-			ColorScheme.TEXT_PRIMARY
-		));
+				BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
+				"Danh sách lô hàng",
+				TitledBorder.LEADING,
+				TitledBorder.TOP,
+				new Font("Segoe UI", Font.BOLD, 14),
+				ColorScheme.TEXT_PRIMARY));
 
 		tableModel = new LoHangTableModel();
 		table = new JTable(tableModel);
 		table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-		table.setRowHeight(25);
+		table.setRowHeight(28);
 		table.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
 		table.setShowGrid(true);
-		table.setGridColor(ColorScheme.BORDER);
+		table.setGridColor(new Color(235, 238, 242));
+		table.setIntercellSpacing(new java.awt.Dimension(1, 1));
 		table.getSelectionModel().addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) {
 				handleTableSelection();
 			}
 		});
 
+		// ===== AUTO RESIZE + COLUMN WIDTHS =====
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+		var cm = table.getColumnModel();
+		cm.getColumn(0).setPreferredWidth(55); // Mã lô
+		cm.getColumn(0).setMaxWidth(70);
+		cm.getColumn(1).setPreferredWidth(55); // Mã SP
+		cm.getColumn(1).setMaxWidth(70);
+		cm.getColumn(2).setPreferredWidth(80); // Số lô
+		cm.getColumn(2).setMaxWidth(100);
+		cm.getColumn(3).setPreferredWidth(100); // Hạn sử dụng
+		cm.getColumn(3).setMaxWidth(120);
+		cm.getColumn(4).setPreferredWidth(100); // Giá nhập
+		cm.getColumn(4).setMaxWidth(130);
+		cm.getColumn(5).setPreferredWidth(65); // SL nhập
+		cm.getColumn(5).setMaxWidth(80);
+		cm.getColumn(6).setPreferredWidth(65); // SL tồn
+		cm.getColumn(6).setMaxWidth(80);
+		cm.getColumn(7).setPreferredWidth(90); // Trạng thái
+		cm.getColumn(7).setMaxWidth(110);
+
+		// Header styling
+		table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+
 		var scrollPane = new JScrollPane(table);
 		scrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER));
+		scrollPane.getViewport().setBackground(ColorScheme.PANEL_BG);
 		panel.add(scrollPane, BorderLayout.CENTER);
 
 		return panel;
 	}
 
-
-	private void loadData() {
+	public void loadData() {
 		tableModel.setRowCount(0);
 		var list = loHangDao.getAll();
 		for (var lh : list) {
-			tableModel.addRow(new Object[]{
-				lh.getMaLoHang(),
-				lh.getMaSanPham(),
-				lh.getSoLo(),
-				lh.getHanSuDung(),
-				lh.getGiaNhap(),
-				lh.getSoLuongNhap(),
-				lh.getSoLuongTon(),
-				lh.getTrangThai()
+			tableModel.addRow(new Object[] {
+					lh.getMaLoHang(),
+					lh.getMaSanPham(),
+					lh.getSoLo(),
+					lh.getHanSuDung(),
+					lh.getGiaNhap(),
+					lh.getSoLuongNhap(),
+					lh.getSoLuongTon(),
+					lh.getTrangThai()
 			});
 		}
 
@@ -282,7 +309,7 @@ public class LoHangPanel extends JPanel {
 
 	private void fillForm(LoHang lh) {
 		txtMaLo.setText(String.valueOf(lh.getMaLoHang()));
-		
+
 		// Tìm sản phẩm
 		var sp = sanPhamDao.findById(lh.getMaSanPham());
 		if (sp != null) {
@@ -294,14 +321,14 @@ public class LoHangPanel extends JPanel {
 				}
 			}
 		}
-		
+
 		txtSoLo.setText(lh.getSoLo());
 		if (lh.getHanSuDung() != null) {
 			txtHanSuDung.setText(lh.getHanSuDung().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 		}
 		txtGiaNhap.setText(lh.getGiaNhap().toString());
 		txtSoLuongTon.setText(String.valueOf(lh.getSoLuongTon()));
-		
+
 		// Set trạng thái
 		String trangThai = lh.getTrangThai();
 		for (int i = 0; i < comboTrangThai.getItemCount(); i++) {
@@ -314,7 +341,8 @@ public class LoHangPanel extends JPanel {
 
 	private void handleCapNhatTrangThai() {
 		if (txtMaLo.getText().isEmpty()) {
-			JOptionPane.showMessageDialog(this, "Vui lòng chọn lô hàng cần cập nhật!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Vui lòng chọn lô hàng cần cập nhật!", "Thông báo",
+					JOptionPane.WARNING_MESSAGE);
 			return;
 		}
 
@@ -322,7 +350,8 @@ public class LoHangPanel extends JPanel {
 		String trangThai = (String) comboTrangThai.getSelectedItem();
 
 		if (loHangDao.updateTrangThai(maLo, trangThai)) {
-			JOptionPane.showMessageDialog(this, "Cập nhật trạng thái thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Cập nhật trạng thái thành công!", "Thông báo",
+					JOptionPane.INFORMATION_MESSAGE);
 			handleLamMoi();
 			loadData();
 		} else {

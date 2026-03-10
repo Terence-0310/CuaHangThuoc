@@ -76,12 +76,17 @@ public class BanHangPanel extends JPanel {
 		setBackground(ColorScheme.BACKGROUND);
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-		var titlePanel = new JPanel(new BorderLayout());
+		var titlePanel = new JPanel(new BorderLayout(0, 10));
 		titlePanel.setOpaque(false);
+		titlePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 15, 0));
 		var lblTitle = new JLabel("Bán hàng");
 		lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
 		lblTitle.setForeground(ColorScheme.TEXT_PRIMARY);
 		titlePanel.add(lblTitle, BorderLayout.WEST);
+		
+		var infoBanner = UIHelper.createInfoBanner("<html>ℹ️ <b>Nghiệp vụ Bán hàng:</b> Tạo hóa đơn, bán lẻ. Hệ thống tự động xuất kho theo chuẩn <b>FEFO (Hết hạn trước - Xuất kho trước)</b>.</html>");
+		titlePanel.add(infoBanner, BorderLayout.SOUTH);
+		
 		add(titlePanel, BorderLayout.NORTH);
 
 		var mainPanel = new JPanel(new BorderLayout(15, 0));
