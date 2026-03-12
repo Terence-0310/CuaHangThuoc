@@ -322,6 +322,38 @@ public class SanPhamDao {
 	}
 
 	/**
+	 * Tìm sản phẩm cho màn hình bán hàng (kèm tồn kho)
+	 * Dùng cho BanHangPanel - tìm theo mã, tên, từ khóa
+	 */
+	public List<SanPham> searchForSale(String keyword) {
+		List<SanPham> list = new ArrayList<>();
+		String sql = "SELECT sp.*, " +
+				"ISNULL((SELECT SUM(SoLuongTon) FROM LoHang lh WHERE lh.MaSanPham = sp.MaSanPham), 0) AS TongTon " +
+				"FROM SanPham sp WHERE sp.DaXoa = 0 ";
+		if (keyword != null && !keyword.trim().isEmpty()) {
+			sql += "AND (sp.TenSanPham LIKE ? OR CAST(sp.MaSanPham AS NVARCHAR) LIKE ?) ";
+		}
+		sql += "ORDER BY sp.TenSanPham ASC";
+
+		try (var con = ConnectDB.getCon();
+			 var ps = con.prepareStatement(sql)) {
+			if (keyword != null && !keyword.trim().isEmpty()) {
+				String pattern = "%" + keyword.trim() + "%";
+				ps.setNString(1, pattern);
+				ps.setNString(2, pattern);
+			}
+			var rs = ps.executeQuery();
+			while (rs.next()) {
+				var sp = mapResultSet(rs);
+				list.add(sp);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+	/**
 	 * Map ResultSet to SanPham entity
 	 */
 	private SanPham mapResultSet(ResultSet rs) throws Exception {

@@ -8,13 +8,14 @@ import java.util.Locale;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.JTableHeader;
 
 import common.ColorScheme;
-import common.UIHelper;
 import components.ChiTietHoaDonTableModel;
 import dao.ChiTietHoaDonDao;
 import dao.HoaDonBanDao;
@@ -22,898 +23,1033 @@ import dao.KhachHangDao;
 import dao.SanPhamDao;
 import entity.KhachHang;
 import entity.NguoiDung;
+import entity.SanPham;
+import ui.StatusBadgeRenderer;
 
 /**
- * BanHangPanel - Professional POS interface
- * Modern admin desktop design with inline customer management
- * 
- * @version 4.0
+ * BanHangPanel – Màn hình POS nhà thuốc (3 cột).
+ *
+ * Layout:
+ *   LEFT  (30%) – Tìm & danh sách thuốc
+ *   CENTER(45%) – Chi tiết hóa đơn
+ *   RIGHT (25%) – Khách hàng + Thanh toán
+ *
+ * @version 5.0 – Pharmacy POS
  */
 public class BanHangPanel extends JPanel {
-	private static final long serialVersionUID = 1L;
-
-	// DAOs
-	private HoaDonBanDao hoaDonDao;
-	private ChiTietHoaDonDao chiTietDao;
-	private SanPhamDao sanPhamDao;
-	private KhachHangDao khachHangDao;
-
-	// Table
-	private ChiTietHoaDonTableModel tableModel;
-	private JTable table;
-	private JPanel emptyStatePanel;
-	private JScrollPane tableScrollPane;
-
-	// Invoice fields
-	private JTextField txtMaHoaDon;
-	private JComboBox<String> comboSanPham;
-	private JTextField txtSoLuong;
-	private JTextField txtGiaBan;
-	private JTextArea txtGhiChu;
-	private JLabel lblTongTien;
-
-	// Customer fields
-	private JTextField txtTimKhachHang;
-	private JList<String> listSuggestions;
-	private DefaultListModel<String> suggestionModel;
-	private JPopupMenu popupSuggestions;
-	private JTextField txtKhachHangTen;
-	private JTextField txtKhachHangSDT;
-	private JTextField txtKhachHangDiaChi;
-	private JLabel lblSelectedCustomer;
-	private JButton btnXoaKhachHang;
-
-	// Buttons
-	private JButton btnTaoHoaDon;
-	private JButton btnThemSanPham;
-	private JButton btnThanhToan;
-	private JButton btnHuy;
-	private JButton btnSuaSoLuong;
-	private JButton btnXoaSanPham;
-
-	// State
-	private Integer currentMaHoaDon;
-	private Integer selectedMaKhachHang;
-	private NguoiDung currentUser;
-	private List<KhachHang> cachedCustomers;
-	private javax.swing.Timer searchTimer;
-
-	private static final NumberFormat VND = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-
-	public BanHangPanel(NguoiDung currentUser) {
-		this.currentUser = currentUser;
-		hoaDonDao = new HoaDonBanDao();
-		chiTietDao = new ChiTietHoaDonDao();
-		sanPhamDao = new SanPhamDao();
-		khachHangDao = new KhachHangDao();
-		initialize();
-		resetForm();
-	}
-
-	private void initialize() {
-		setLayout(new BorderLayout());
-		setBackground(ColorScheme.BACKGROUND);
-		setBorder(new EmptyBorder(20, 24, 20, 24));
-
-		// === HEADER ===
-		add(createPageHeader(), BorderLayout.NORTH);
-
-		// === MAIN 2-COLUMN LAYOUT ===
-		var mainPanel = new JPanel(new BorderLayout(20, 0));
-		mainPanel.setOpaque(false);
-		mainPanel.add(createLeftColumn(), BorderLayout.WEST);
-		mainPanel.add(createRightColumn(), BorderLayout.CENTER);
-		add(mainPanel, BorderLayout.CENTER);
-
-		// F9 shortcut
-		getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(
-			KeyStroke.getKeyStroke("F9"), "thanhtoan");
-		getActionMap().put("thanhtoan", new AbstractAction() {
-			@Override public void actionPerformed(java.awt.event.ActionEvent e) {
-				handleThanhToan();
-			}
-		});
-	}
-
-	// ===================== PAGE HEADER =====================
-
-	private JPanel createPageHeader() {
-		var header = new JPanel(new BorderLayout(0, 10));
-		header.setOpaque(false);
-		header.setBorder(new EmptyBorder(0, 0, 16, 0));
-
-		var lblTitle = new JLabel("Bán hàng");
-		lblTitle.setFont(UIHelper.FONT_TITLE);
-		lblTitle.setForeground(ColorScheme.TEXT_PRIMARY);
-		header.add(lblTitle, BorderLayout.WEST);
-
-		var banner = UIHelper.createInfoBanner(
-			"<html>ℹ️ <b>Quy trình:</b> Tạo hóa đơn → Chọn sản phẩm → Thanh toán (F9). " +
-			"Hệ thống xuất kho tự động theo <b>FEFO</b>.</html>"
-		);
-		header.add(banner, BorderLayout.SOUTH);
-
-		return header;
-	}
-
-	// ===================== LEFT COLUMN (36%) =====================
-
-	private JPanel createLeftColumn() {
-		var column = new JPanel();
-		column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
-		column.setOpaque(false);
-		column.setPreferredSize(new Dimension(400, 0));
-
-		// Wraps in scrollpane for small screens
-		var scrollContent = new JPanel();
-		scrollContent.setLayout(new BoxLayout(scrollContent, BoxLayout.Y_AXIS));
-		scrollContent.setOpaque(false);
-
-		scrollContent.add(createInvoiceCard());
-		scrollContent.add(Box.createVerticalStrut(12));
-		scrollContent.add(createCustomerCard());
-		scrollContent.add(Box.createVerticalStrut(12));
-		scrollContent.add(createProductCard());
-		scrollContent.add(Box.createVerticalStrut(12));
-		scrollContent.add(createNoteCard());
-		scrollContent.add(Box.createVerticalStrut(12));
-		scrollContent.add(createActionCard());
-
-		var scroll = new JScrollPane(scrollContent);
-		scroll.setBorder(null);
-		scroll.setOpaque(false);
-		scroll.getViewport().setOpaque(false);
-		scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		scroll.getVerticalScrollBar().setUnitIncrement(20);
-
-		column.add(scroll);
-		return column;
-	}
-
-	// ----- Card 1: Invoice Info -----
-	private JPanel createInvoiceCard() {
-		var card = createCard("📋 Thông tin hóa đơn");
-
-		addFormField(card, "Mã hóa đơn", null);
-		txtMaHoaDon = UIHelper.createStyledTextFieldDisabled();
-		txtMaHoaDon.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtMaHoaDon);
-
-		card.add(Box.createVerticalStrut(12));
-
-		btnTaoHoaDon = UIHelper.createPrimaryButton("🧾 Tạo hóa đơn mới");
-		btnTaoHoaDon.setFont(UIHelper.FONT_BUTTON);
-		btnTaoHoaDon.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.BUTTON_HEIGHT));
-		btnTaoHoaDon.setAlignmentX(Component.LEFT_ALIGNMENT);
-		btnTaoHoaDon.addActionListener(e -> handleTaoHoaDon());
-		card.add(btnTaoHoaDon);
-
-		return card;
-	}
-
-	// ----- Card 2: Customer -----
-	private JPanel createCustomerCard() {
-		var card = createCard("👤 Khách hàng");
-
-		// Selected customer display
-		var selectedPanel = new JPanel(new BorderLayout(8, 0));
-		selectedPanel.setOpaque(false);
-		selectedPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-		selectedPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		selectedPanel.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER),
-			new EmptyBorder(6, 10, 6, 6)
-		));
-		selectedPanel.setBackground(ColorScheme.INPUT_DISABLED);
-		selectedPanel.setOpaque(true);
-
-		lblSelectedCustomer = new JLabel("Khách lẻ (chưa chọn)");
-		lblSelectedCustomer.setFont(UIHelper.FONT_LABEL);
-		lblSelectedCustomer.setForeground(ColorScheme.TEXT_MUTED);
-		selectedPanel.add(lblSelectedCustomer, BorderLayout.CENTER);
-
-		btnXoaKhachHang = new JButton("✕");
-		btnXoaKhachHang.setFont(new Font("Segoe UI", Font.BOLD, 11));
-		btnXoaKhachHang.setForeground(ColorScheme.DANGER);
-		btnXoaKhachHang.setContentAreaFilled(false);
-		btnXoaKhachHang.setBorderPainted(false);
-		btnXoaKhachHang.setFocusPainted(false);
-		btnXoaKhachHang.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		btnXoaKhachHang.setPreferredSize(new Dimension(28, 28));
-		btnXoaKhachHang.setVisible(false);
-		btnXoaKhachHang.addActionListener(e -> clearSelectedCustomer());
-		selectedPanel.add(btnXoaKhachHang, BorderLayout.EAST);
-		card.add(selectedPanel);
-
-		card.add(Box.createVerticalStrut(10));
-
-		// Search field
-		addFormField(card, "🔍 Tìm khách hàng", null);
-		txtTimKhachHang = UIHelper.createStyledTextField();
-		txtTimKhachHang.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		txtTimKhachHang.setToolTipText("Nhập tên hoặc SĐT để tìm kiếm");
-		card.add(txtTimKhachHang);
-		setupAutocomplete();
-
-		// Divider
-		card.add(Box.createVerticalStrut(14));
-		var divider = new JSeparator(SwingConstants.HORIZONTAL);
-		divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-		divider.setForeground(ColorScheme.BORDER);
-		card.add(divider);
-		card.add(Box.createVerticalStrut(14));
-
-		// New customer form
-		var lblNewCust = UIHelper.createSectionLabel("➕ Thêm khách hàng mới");
-		lblNewCust.setFont(UIHelper.FONT_LABEL_BOLD);
-		lblNewCust.setForeground(ColorScheme.PRIMARY);
-		lblNewCust.setAlignmentX(Component.LEFT_ALIGNMENT);
-		card.add(lblNewCust);
-		card.add(Box.createVerticalStrut(10));
-
-		addFormField(card, "Họ tên *", null);
-		txtKhachHangTen = UIHelper.createStyledTextField();
-		txtKhachHangTen.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtKhachHangTen);
-		card.add(Box.createVerticalStrut(8));
-
-		addFormField(card, "Số điện thoại *", null);
-		txtKhachHangSDT = UIHelper.createStyledTextField();
-		txtKhachHangSDT.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtKhachHangSDT);
-		card.add(Box.createVerticalStrut(8));
-
-		addFormField(card, "Địa chỉ", null);
-		txtKhachHangDiaChi = UIHelper.createStyledTextField();
-		txtKhachHangDiaChi.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtKhachHangDiaChi);
-		card.add(Box.createVerticalStrut(10));
-
-		var btnSaveCustomer = UIHelper.createPrimaryButton("💾 Lưu khách hàng mới");
-		btnSaveCustomer.setFont(UIHelper.FONT_BUTTON_SM);
-		btnSaveCustomer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-		btnSaveCustomer.setAlignmentX(Component.LEFT_ALIGNMENT);
-		btnSaveCustomer.addActionListener(e -> handleThemKhachHangMoi());
-		card.add(btnSaveCustomer);
-
-		return card;
-	}
-
-	// ----- Card 3: Product -----
-	private JPanel createProductCard() {
-		var card = createCard("💊 Thêm sản phẩm");
-
-		addFormField(card, "Sản phẩm *", null);
-		comboSanPham = new JComboBox<>();
-		comboSanPham.setFont(UIHelper.FONT_INPUT);
-		comboSanPham.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		loadSanPham();
-		card.add(comboSanPham);
-		card.add(Box.createVerticalStrut(8));
-
-		addFormField(card, "Số lượng *", null);
-		txtSoLuong = UIHelper.createStyledTextField();
-		txtSoLuong.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtSoLuong);
-		card.add(Box.createVerticalStrut(8));
-
-		addFormField(card, "Giá bán (để trống = mặc định)", null);
-		txtGiaBan = UIHelper.createStyledTextField();
-		txtGiaBan.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.INPUT_HEIGHT));
-		card.add(txtGiaBan);
-		card.add(Box.createVerticalStrut(12));
-
-		btnThemSanPham = UIHelper.createSuccessButton("➕ Thêm vào hóa đơn");
-		btnThemSanPham.setFont(UIHelper.FONT_BUTTON);
-		btnThemSanPham.setMaximumSize(new Dimension(Integer.MAX_VALUE, ColorScheme.BUTTON_HEIGHT));
-		btnThemSanPham.setAlignmentX(Component.LEFT_ALIGNMENT);
-		btnThemSanPham.addActionListener(e -> handleThemSanPham());
-		card.add(btnThemSanPham);
-
-		return card;
-	}
-
-	// ----- Card 4: Note -----
-	private JPanel createNoteCard() {
-		var card = createCard("📝 Ghi chú");
-
-		txtGhiChu = new JTextArea(2, 20);
-		txtGhiChu.setFont(UIHelper.FONT_INPUT);
-		txtGhiChu.setLineWrap(true);
-		txtGhiChu.setWrapStyleWord(true);
-		txtGhiChu.setBorder(new EmptyBorder(8, 10, 8, 10));
-		var scrollGhiChu = new JScrollPane(txtGhiChu);
-		scrollGhiChu.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER));
-		scrollGhiChu.setAlignmentX(Component.LEFT_ALIGNMENT);
-		scrollGhiChu.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
-		card.add(scrollGhiChu);
-
-		return card;
-	}
-
-	// ----- Card 5: Actions -----
-	private JPanel createActionCard() {
-		var card = new JPanel();
-		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-		card.setOpaque(false);
-		card.setAlignmentX(Component.LEFT_ALIGNMENT);
-		// No card border - just a transparent action area
-		return card;
-	}
-
-	// ===================== RIGHT COLUMN (64%) =====================
-
-	private JPanel createRightColumn() {
-		var card = new JPanel(new BorderLayout(0, 0));
-		card.setBackground(ColorScheme.PANEL_BG);
-		card.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
-			new EmptyBorder(20, 20, 20, 20)
-		));
-
-		// Header with title
-		var headerPanel = new JPanel(new BorderLayout());
-		headerPanel.setOpaque(false);
-		headerPanel.setBorder(new EmptyBorder(0, 0, 14, 0));
-
-		var lblTitle = new JLabel("📄 Chi tiết hóa đơn");
-		lblTitle.setFont(UIHelper.FONT_SECTION);
-		lblTitle.setForeground(ColorScheme.TEXT_PRIMARY);
-		headerPanel.add(lblTitle, BorderLayout.WEST);
-		card.add(headerPanel, BorderLayout.NORTH);
-
-		// Table + empty state wrapper
-		var tableWrapper = new JPanel(new BorderLayout(0, 10));
-		tableWrapper.setOpaque(false);
-
-		// Table
-		tableModel = new ChiTietHoaDonTableModel();
-		table = new JTable(tableModel);
-		table.setFont(UIHelper.FONT_TABLE);
-		table.setRowHeight(36);
-		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		table.setShowGrid(false);
-		table.setShowHorizontalLines(true);
-		table.setGridColor(new Color(243, 244, 246));
-		table.setSelectionBackground(ColorScheme.PRIMARY_LIGHT);
-		table.setSelectionForeground(ColorScheme.TEXT_PRIMARY);
-		table.setIntercellSpacing(new Dimension(0, 0));
-
-		// Hide MaCTHD column (index 0)
-		table.getColumnModel().getColumn(0).setMinWidth(0);
-		table.getColumnModel().getColumn(0).setMaxWidth(0);
-		table.getColumnModel().getColumn(0).setPreferredWidth(0);
-
-		// Header style
-		JTableHeader header = table.getTableHeader();
-		header.setFont(UIHelper.FONT_TABLE_HEADER);
-		header.setBackground(ColorScheme.TABLE_HEADER_BG);
-		header.setForeground(ColorScheme.TEXT_PRIMARY);
-		header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, ColorScheme.BORDER));
-		header.setPreferredSize(new Dimension(header.getPreferredSize().width, 40));
-
-		// Alternating rows + alignment
-		table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-			@Override
-			public Component getTableCellRendererComponent(JTable table, Object value,
-					boolean isSelected, boolean hasFocus, int row, int column) {
-				Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-				if (!isSelected) {
-					c.setBackground(row % 2 == 0 ? Color.WHITE : ColorScheme.TABLE_ALT_ROW);
-				}
-				setBorder(new EmptyBorder(0, 12, 0, 12));
-
-				// Right-align price columns (5=Giá bán, 6=Thành tiền)
-				int modelCol = table.convertColumnIndexToModel(column);
-				if (modelCol == 5 || modelCol == 6) {
-					setHorizontalAlignment(SwingConstants.RIGHT);
-				} else if (modelCol == 4) { // Số lượng = center
-					setHorizontalAlignment(SwingConstants.CENTER);
-				} else {
-					setHorizontalAlignment(SwingConstants.LEFT);
-				}
-				return c;
-			}
-		});
-
-		tableScrollPane = new JScrollPane(table);
-		tableScrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER));
-
-		// Empty state
-		emptyStatePanel = UIHelper.createEmptyState(
-			"🛒",
-			"Chưa có sản phẩm trong hóa đơn",
-			"Chọn sản phẩm ở khung bên trái để thêm vào đơn"
-		);
-
-		// CardLayout to switch between table and empty state
-		var tableArea = new JPanel(new CardLayout());
-		tableArea.setOpaque(false);
-		tableArea.add(emptyStatePanel, "empty");
-		tableArea.add(tableScrollPane, "table");
-		tableWrapper.add(tableArea, BorderLayout.CENTER);
-
-		// Edit/Delete toolbar
-		var editToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-		editToolbar.setOpaque(false);
-		editToolbar.setBorder(new EmptyBorder(4, 0, 0, 0));
-
-		btnSuaSoLuong = UIHelper.createOutlineButton("✏️ Sửa số lượng", ColorScheme.WARNING);
-		btnSuaSoLuong.setEnabled(false);
-		btnSuaSoLuong.addActionListener(e -> handleSuaSoLuong());
-		editToolbar.add(btnSuaSoLuong);
-
-		btnXoaSanPham = UIHelper.createOutlineButton("🗑️ Xóa sản phẩm", ColorScheme.DANGER);
-		btnXoaSanPham.setEnabled(false);
-		btnXoaSanPham.addActionListener(e -> handleXoaSanPham());
-		editToolbar.add(btnXoaSanPham);
-
-		var lblHint = UIHelper.createMutedLabel("← Chọn một dòng để thao tác");
-		editToolbar.add(lblHint);
-
-		tableWrapper.add(editToolbar, BorderLayout.SOUTH);
-
-		// Enable/disable edit buttons based on selection
-		table.getSelectionModel().addListSelectionListener(e -> {
-			boolean hasSelection = table.getSelectedRow() >= 0;
-			btnSuaSoLuong.setEnabled(hasSelection);
-			btnXoaSanPham.setEnabled(hasSelection);
-		});
-
-		card.add(tableWrapper, BorderLayout.CENTER);
-
-		// ===== BOTTOM: Total + Actions =====
-		var bottomPanel = new JPanel(new BorderLayout(0, 14));
-		bottomPanel.setOpaque(false);
-		bottomPanel.setBorder(new EmptyBorder(16, 0, 0, 0));
-
-		// Total panel with highlight background
-		var totalCard = new JPanel(new BorderLayout());
-		totalCard.setBackground(ColorScheme.BACKGROUND);
-		totalCard.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER),
-			new EmptyBorder(14, 20, 14, 20)
-		));
-
-		var lblTotal = new JLabel("Tổng tiền:");
-		lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 18));
-		lblTotal.setForeground(ColorScheme.TEXT_PRIMARY);
-		totalCard.add(lblTotal, BorderLayout.WEST);
-
-		lblTongTien = new JLabel("0 đ");
-		lblTongTien.setFont(new Font("Segoe UI", Font.BOLD, 26));
-		lblTongTien.setForeground(ColorScheme.DANGER);
-		totalCard.add(lblTongTien, BorderLayout.EAST);
-
-		bottomPanel.add(totalCard, BorderLayout.NORTH);
-
-		// Action buttons
-		var actionPanel = new JPanel(new GridLayout(1, 2, 14, 0));
-		actionPanel.setOpaque(false);
-
-		btnHuy = UIHelper.createOutlineButton("Hủy bỏ", ColorScheme.DANGER);
-		btnHuy.setFont(new Font("Segoe UI", Font.BOLD, 14));
-		btnHuy.setPreferredSize(new Dimension(0, ColorScheme.BUTTON_HEIGHT_LG));
-		btnHuy.addActionListener(e -> handleHuy());
-
-		btnThanhToan = UIHelper.createSuccessButton("✅ Thanh toán (F9)");
-		btnThanhToan.setFont(new Font("Segoe UI", Font.BOLD, 15));
-		btnThanhToan.setPreferredSize(new Dimension(0, ColorScheme.BUTTON_HEIGHT_LG));
-		btnThanhToan.addActionListener(e -> handleThanhToan());
-
-		actionPanel.add(btnHuy);
-		actionPanel.add(btnThanhToan);
-
-		bottomPanel.add(actionPanel, BorderLayout.CENTER);
-		card.add(bottomPanel, BorderLayout.SOUTH);
-
-		return card;
-	}
-
-	// ===================== HELPER METHODS =====================
-
-	private JPanel createCard(String title) {
-		var card = new JPanel();
-		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-		card.setBackground(ColorScheme.PANEL_BG);
-		card.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createLineBorder(ColorScheme.BORDER, 1),
-			new EmptyBorder(16, 16, 16, 16)
-		));
-		card.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		if (title != null) {
-			var lblTitle = new JLabel(title);
-			lblTitle.setFont(UIHelper.FONT_SUBSECTION);
-			lblTitle.setForeground(ColorScheme.TEXT_PRIMARY);
-			lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-			lblTitle.setBorder(new EmptyBorder(0, 0, 12, 0));
-			card.add(lblTitle);
-		}
-
-		return card;
-	}
-
-	private void addFormField(JPanel card, String labelText, String hint) {
-		var lbl = new JLabel(labelText);
-		lbl.setFont(UIHelper.FONT_LABEL);
-		lbl.setForeground(ColorScheme.TEXT_PRIMARY);
-		lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-		lbl.setBorder(new EmptyBorder(0, 0, 4, 0));
-		card.add(lbl);
-	}
-
-	private void updateTableVisibility() {
-		// Switch between empty state and table based on data
-		var tableArea = (JPanel) tableScrollPane.getParent();
-		var cl = (CardLayout) tableArea.getLayout();
-		if (tableModel.getRowCount() == 0) {
-			cl.show(tableArea, "empty");
-		} else {
-			cl.show(tableArea, "table");
-		}
-	}
-
-	// ===================== AUTOCOMPLETE =====================
-
-	private void setupAutocomplete() {
-		suggestionModel = new DefaultListModel<>();
-		listSuggestions = new JList<>(suggestionModel);
-		listSuggestions.setFont(UIHelper.FONT_INPUT);
-		listSuggestions.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		listSuggestions.setFixedCellHeight(34);
-		listSuggestions.setCellRenderer(new DefaultListCellRenderer() {
-			@Override
-			public Component getListCellRendererComponent(JList<?> list, Object value,
-					int index, boolean isSelected, boolean cellHasFocus) {
-				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-				setBorder(new EmptyBorder(4, 12, 4, 12));
-				if (isSelected) {
-					setBackground(ColorScheme.PRIMARY_LIGHT);
-					setForeground(ColorScheme.TEXT_PRIMARY);
-				}
-				return this;
-			}
-		});
-
-		popupSuggestions = new JPopupMenu();
-		popupSuggestions.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER));
-		var scrollSuggestions = new JScrollPane(listSuggestions);
-		scrollSuggestions.setBorder(null);
-		scrollSuggestions.setPreferredSize(new Dimension(350, 180));
-		popupSuggestions.add(scrollSuggestions);
-
-		listSuggestions.addListSelectionListener(e -> {
-			if (!e.getValueIsAdjusting() && listSuggestions.getSelectedIndex() >= 0) {
-				int idx = listSuggestions.getSelectedIndex();
-				if (cachedCustomers != null && idx >= 0 && idx < cachedCustomers.size()) {
-					selectCustomer(cachedCustomers.get(idx));
-					popupSuggestions.setVisible(false);
-				}
-			}
-		});
-
-		searchTimer = new javax.swing.Timer(300, e -> performSearch());
-		searchTimer.setRepeats(false);
-
-		txtTimKhachHang.getDocument().addDocumentListener(new DocumentListener() {
-			@Override public void insertUpdate(DocumentEvent e) { searchTimer.restart(); }
-			@Override public void removeUpdate(DocumentEvent e) { searchTimer.restart(); }
-			@Override public void changedUpdate(DocumentEvent e) { searchTimer.restart(); }
-		});
-	}
-
-	private void performSearch() {
-		String keyword = txtTimKhachHang.getText().trim();
-		if (keyword.length() < 1) {
-			popupSuggestions.setVisible(false);
-			return;
-		}
-
-		cachedCustomers = khachHangDao.searchByNameOrPhone(keyword);
-		suggestionModel.clear();
-
-		if (cachedCustomers.isEmpty()) {
-			suggestionModel.addElement("Không tìm thấy \"" + keyword + "\"");
-		} else {
-			for (var kh : cachedCustomers) {
-				suggestionModel.addElement(kh.getHoTen() + "  |  " +
-					(kh.getSoDienThoai() != null ? kh.getSoDienThoai() : "--") +
-					"  (Mã: " + kh.getMaKhachHang() + ")");
-			}
-		}
-
-		if (!popupSuggestions.isVisible()) {
-			popupSuggestions.show(txtTimKhachHang, 0, txtTimKhachHang.getHeight());
-		}
-		popupSuggestions.setPopupSize(txtTimKhachHang.getWidth(),
-			Math.min(cachedCustomers.size() * 36 + 10, 200));
-	}
-
-	private void selectCustomer(KhachHang kh) {
-		selectedMaKhachHang = kh.getMaKhachHang();
-		lblSelectedCustomer.setText("✅ " + kh.getHoTen() +
-			"  |  SĐT: " + (kh.getSoDienThoai() != null ? kh.getSoDienThoai() : "--") +
-			"  (Mã: " + kh.getMaKhachHang() + ")");
-		lblSelectedCustomer.setForeground(ColorScheme.SUCCESS);
-		btnXoaKhachHang.setVisible(true);
-		txtTimKhachHang.setText("");
-	}
-
-	private void clearSelectedCustomer() {
-		selectedMaKhachHang = null;
-		lblSelectedCustomer.setText("Khách lẻ (chưa chọn)");
-		lblSelectedCustomer.setForeground(ColorScheme.TEXT_MUTED);
-		btnXoaKhachHang.setVisible(false);
-	}
-
-	// ===================== BUSINESS LOGIC =====================
-
-	private void loadSanPham() {
-		comboSanPham.removeAllItems();
-		var list = sanPhamDao.getAll();
-		for (var sp : list) {
-			comboSanPham.addItem(sp.getMaSanPham() + " - " + sp.getTenSanPham());
-		}
-	}
-
-	private void handleThemKhachHangMoi() {
-		String hoTen = txtKhachHangTen.getText().trim();
-		String sdt = txtKhachHangSDT.getText().trim();
-		String diaChi = txtKhachHangDiaChi.getText().trim();
-
-		if (hoTen.isEmpty()) {
-			JOptionPane.showMessageDialog(this, "Vui lòng nhập họ tên!",
-				"Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
-			txtKhachHangTen.requestFocus();
-			return;
-		}
-		if (sdt.isEmpty()) {
-			JOptionPane.showMessageDialog(this, "Vui lòng nhập số điện thoại!",
-				"Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
-			txtKhachHangSDT.requestFocus();
-			return;
-		}
-
-		var existing = khachHangDao.searchByNameOrPhone(sdt);
-		for (var kh : existing) {
-			if (sdt.equals(kh.getSoDienThoai())) {
-				int option = JOptionPane.showConfirmDialog(this,
-					"SĐT \"" + sdt + "\" đã có: \"" + kh.getHoTen() + "\".\nChọn khách hàng này?",
-					"Khách hàng đã tồn tại", JOptionPane.YES_NO_OPTION);
-				if (option == JOptionPane.YES_OPTION) {
-					selectCustomer(kh);
-					clearNewCustomerForm();
-				}
-				return;
-			}
-		}
-
-		var newKH = new KhachHang();
-		newKH.setHoTen(hoTen);
-		newKH.setSoDienThoai(sdt);
-		newKH.setDiaChi(diaChi);
-		Integer newId = khachHangDao.insertAndGetId(newKH);
-		if (newId != null) {
-			newKH.setMaKhachHang(newId);
-			selectCustomer(newKH);
-			clearNewCustomerForm();
-			JOptionPane.showMessageDialog(this,
-				"Thêm khách hàng thành công! (Mã: " + newId + ")",
-				"Thành công", JOptionPane.INFORMATION_MESSAGE);
-		} else {
-			JOptionPane.showMessageDialog(this,
-				"Thêm khách hàng thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	private void clearNewCustomerForm() {
-		txtKhachHangTen.setText("");
-		txtKhachHangSDT.setText("");
-		txtKhachHangDiaChi.setText("");
-	}
-
-	private void handleTaoHoaDon() {
-		String ghiChu = txtGhiChu.getText().trim();
-		Integer maHD = hoaDonDao.createHoaDon(currentUser.getMaNguoiDung(), selectedMaKhachHang, ghiChu);
-		if (maHD != null) {
-			currentMaHoaDon = maHD;
-			txtMaHoaDon.setText(String.valueOf(maHD));
-			JOptionPane.showMessageDialog(this,
-				"Tạo hóa đơn thành công! Mã: " + maHD,
-				"Thành công", JOptionPane.INFORMATION_MESSAGE);
-			tableModel.setRowCount(0);
-			updateTongTien();
-			updateTableVisibility();
-		} else {
-			JOptionPane.showMessageDialog(this,
-				"Tạo hóa đơn thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	private void handleThemSanPham() {
-		if (currentMaHoaDon == null) {
-			JOptionPane.showMessageDialog(this,
-				"Vui lòng tạo hóa đơn trước!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-		if (comboSanPham.getSelectedIndex() < 0) {
-			JOptionPane.showMessageDialog(this,
-				"Vui lòng chọn sản phẩm!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		String selected = (String) comboSanPham.getSelectedItem();
-		int maSP = Integer.parseInt(selected.split(" - ")[0]);
-
-		if (txtSoLuong.getText().trim().isEmpty()) {
-			JOptionPane.showMessageDialog(this,
-				"Vui lòng nhập số lượng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-			txtSoLuong.requestFocus();
-			return;
-		}
-
-		int soLuong;
-		try {
-			soLuong = Integer.parseInt(txtSoLuong.getText().trim());
-			if (soLuong <= 0) throw new NumberFormatException();
-		} catch (NumberFormatException e) {
-			JOptionPane.showMessageDialog(this,
-				"Số lượng phải là số nguyên dương!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		BigDecimal giaBan = null;
-		if (!txtGiaBan.getText().trim().isEmpty()) {
-			try {
-				giaBan = new BigDecimal(txtGiaBan.getText().trim());
-				if (giaBan.compareTo(BigDecimal.ZERO) < 0) throw new NumberFormatException();
-			} catch (NumberFormatException e) {
-				JOptionPane.showMessageDialog(this,
-					"Giá bán không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-				return;
-			}
-		}
-
-		if (hoaDonDao.sellProductFEFO(currentMaHoaDon, maSP, soLuong, giaBan)) {
-			loadChiTietHoaDon();
-			txtSoLuong.setText("");
-			txtGiaBan.setText("");
-			txtSoLuong.requestFocus();
-		} else {
-			JOptionPane.showMessageDialog(this,
-				"Thêm sản phẩm thất bại!\nKiểm tra tồn kho hoặc số lượng.",
-				"Lỗi", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	private void loadChiTietHoaDon() {
-		if (currentMaHoaDon == null) return;
-		tableModel.setRowCount(0);
-		var list = chiTietDao.getDetailForDisplay(currentMaHoaDon);
-		for (var row : list) {
-			tableModel.addRow(row);
-		}
-		updateTongTien();
-		updateTableVisibility();
-	}
-
-	private void updateTongTien() {
-		BigDecimal total = BigDecimal.ZERO;
-		for (int i = 0; i < tableModel.getRowCount(); i++) {
-			BigDecimal thanhTien = (BigDecimal) tableModel.getValueAt(i, 6);
-			total = total.add(thanhTien);
-		}
-		lblTongTien.setText(VND.format(total));
-	}
-
-	private void handleSuaSoLuong() {
-		int selectedRow = table.getSelectedRow();
-		if (selectedRow < 0) {
-			JOptionPane.showMessageDialog(this,
-				"Vui lòng chọn sản phẩm để sửa!", "Chưa chọn", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-		int maCTHD = (int) tableModel.getValueAt(selectedRow, 0);
-		String tenSP = (String) tableModel.getValueAt(selectedRow, 2);
-		int soLuongCu = (int) tableModel.getValueAt(selectedRow, 4);
-
-		String input = JOptionPane.showInputDialog(this,
-			"Sản phẩm: " + tenSP + "\nSố lượng hiện tại: " + soLuongCu + "\n\nNhập số lượng mới:",
-			"Sửa số lượng", JOptionPane.PLAIN_MESSAGE);
-		if (input == null || input.trim().isEmpty()) return;
-
-		int soLuongMoi;
-		try {
-			soLuongMoi = Integer.parseInt(input.trim());
-			if (soLuongMoi <= 0) throw new NumberFormatException();
-		} catch (NumberFormatException e) {
-			JOptionPane.showMessageDialog(this,
-				"Số lượng phải là số nguyên dương!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-		if (soLuongMoi == soLuongCu) return;
-
-		if (chiTietDao.updateSoLuong(maCTHD, soLuongMoi)) {
-			loadChiTietHoaDon();
-		} else {
-			JOptionPane.showMessageDialog(this,
-				"Cập nhật thất bại! Có thể không đủ tồn kho.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-		}
-	}
-
-	private void handleXoaSanPham() {
-		int selectedRow = table.getSelectedRow();
-		if (selectedRow < 0) {
-			JOptionPane.showMessageDialog(this,
-				"Vui lòng chọn sản phẩm để xóa!", "Chưa chọn", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-		int maCTHD = (int) tableModel.getValueAt(selectedRow, 0);
-		String tenSP = (String) tableModel.getValueAt(selectedRow, 2);
-		int soLuong = (int) tableModel.getValueAt(selectedRow, 4);
-
-		int option = JOptionPane.showConfirmDialog(this,
-			"Xóa: " + tenSP + " (SL: " + soLuong + ")?\nTồn kho sẽ được hoàn trả.",
-			"Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-		if (option == JOptionPane.YES_OPTION) {
-			if (chiTietDao.deleteChiTiet(maCTHD)) {
-				loadChiTietHoaDon();
-			} else {
-				JOptionPane.showMessageDialog(this,
-					"Xóa thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-			}
-		}
-	}
-
-	private void handleThanhToan() {
-		if (currentMaHoaDon == null) {
-			JOptionPane.showMessageDialog(this,
-				"Chưa có hóa đơn nào!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-		if (tableModel.getRowCount() == 0) {
-			JOptionPane.showMessageDialog(this,
-				"Hóa đơn chưa có sản phẩm!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-			return;
-		}
-
-		int option = JOptionPane.showConfirmDialog(this,
-			"Xác nhận thanh toán hóa đơn #" + currentMaHoaDon + "?\n\nTổng tiền: " + lblTongTien.getText(),
-			"Xác nhận thanh toán", JOptionPane.YES_NO_OPTION);
-		if (option == JOptionPane.YES_OPTION) {
-			JOptionPane.showMessageDialog(this,
-				"✅ Thanh toán thành công!\nMã HĐ: " + currentMaHoaDon + "\nTổng: " + lblTongTien.getText(),
-				"Thành công", JOptionPane.INFORMATION_MESSAGE);
-			resetForm();
-		}
-	}
-
-	private void handleHuy() {
-		if (currentMaHoaDon == null) return;
-		int option = JOptionPane.showConfirmDialog(this,
-			"Hủy hóa đơn #" + currentMaHoaDon + "?",
-			"Xác nhận", JOptionPane.YES_NO_OPTION);
-		if (option == JOptionPane.YES_OPTION) {
-			resetForm();
-		}
-	}
-
-	private void resetForm() {
-		currentMaHoaDon = null;
-		selectedMaKhachHang = null;
-		txtMaHoaDon.setText("");
-		clearSelectedCustomer();
-		txtTimKhachHang.setText("");
-		clearNewCustomerForm();
-		if (comboSanPham.getItemCount() > 0) {
-			comboSanPham.setSelectedIndex(0);
-		}
-		txtSoLuong.setText("");
-		txtGiaBan.setText("");
-		txtGhiChu.setText("");
-		tableModel.setRowCount(0);
-		updateTongTien();
-		updateTableVisibility();
-	}
+    private static final long serialVersionUID = 1L;
+
+    /* ============ PALETTE ============ */
+    private static final Color BG       = new Color(246, 248, 250);
+    private static final Color CARD     = Color.WHITE;
+    private static final Color BORDER   = new Color(226, 232, 240);
+    private static final Color DIVIDER  = new Color(241, 245, 249);
+    private static final Color BLUE     = new Color(37, 99, 235);
+    private static final Color GREEN    = new Color(22, 163, 74);
+    private static final Color RED      = new Color(220, 38, 38);
+    private static final Color ORANGE   = new Color(234, 88, 12);
+    private static final Color TXT1     = new Color(15, 23, 42);
+    private static final Color TXT2     = new Color(100, 116, 139);
+    private static final Color TXT_M    = new Color(148, 163, 184);
+    private static final Color HDR_BG   = new Color(248, 250, 252);
+    private static final Color ALT      = new Color(248, 250, 252);
+    private static final Color HOVER    = new Color(241, 245, 249);
+
+    /* ============ FONTS ============ */
+    private static final Font F_TITLE   = new Font("Segoe UI", Font.BOLD, 20);
+    private static final Font F_SEC     = new Font("Segoe UI", Font.BOLD, 14);
+    private static final Font F_LBL     = new Font("Segoe UI", Font.PLAIN, 12);
+    private static final Font F_INPUT   = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Font F_TABLE   = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font F_TH      = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Font F_BTN     = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font F_TOTAL   = new Font("Segoe UI", Font.BOLD, 22);
+    private static final Font F_PAY_BTN = new Font("Segoe UI", Font.BOLD, 16);
+    private static final Font F_HINT    = new Font("Segoe UI", Font.ITALIC, 12);
+    private static final Font F_MONEY   = new Font("Segoe UI", Font.BOLD, 15);
+
+    private static final NumberFormat VND = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+
+    /* ============ DAOs ============ */
+    private final HoaDonBanDao hoaDonDao   = new HoaDonBanDao();
+    private final ChiTietHoaDonDao cthdDao = new ChiTietHoaDonDao();
+    private final SanPhamDao spDao         = new SanPhamDao();
+    private final KhachHangDao khDao       = new KhachHangDao();
+
+    /* ============ STATE ============ */
+    private final NguoiDung currentUser;
+    private Integer currentMaHoaDon;
+    private Integer selectedMaKH;
+    private List<SanPham> productCache;
+
+    /* ============ LEFT: Product search ============ */
+    private JTextField txtSearch;
+    private DefaultTableModel mdlProduct;
+    private JTable tblProduct;
+    private JLabel lblProductCount;
+
+    /* ============ CENTER: Invoice details ============ */
+    private ChiTietHoaDonTableModel mdlInvoice;
+    private JTable tblInvoice;
+    private JLabel lblMaHoaDon;
+    private JLabel lblTongTien;
+    private JPanel emptyState;
+    private JScrollPane invoiceScroll;
+
+    /* ============ RIGHT: Payment ============ */
+    private JTextField txtTimKH;
+    private JLabel lblKhachHang;
+    private JButton btnXoaKH;
+    private JLabel lblSummaryTotal;
+    private JTextField txtTienKhach;
+    private JLabel lblTienThua;
+    private List<KhachHang> khCache;
+    private JPopupMenu popupKH;
+    private DefaultListModel<String> khModel;
+    private JList<String> khList;
+    private javax.swing.Timer searchKHTimer;
+
+    /* ============ CONSTRUCTOR ============ */
+
+    public BanHangPanel(NguoiDung currentUser) {
+        this.currentUser = currentUser;
+        buildUI();
+        loadProducts(null);
+        resetForm();
+
+        // Focus vào ô tìm kiếm khi hiện
+        SwingUtilities.invokeLater(() -> txtSearch.requestFocusInWindow());
+    }
+
+    /* ================================================================
+       UI CONSTRUCTION
+       ================================================================ */
+
+    private void buildUI() {
+        setLayout(new BorderLayout());
+        setBackground(BG);
+        setBorder(new EmptyBorder(12, 14, 12, 14));
+
+        // Header
+        add(createHeader(), BorderLayout.NORTH);
+
+        // 3-column body
+        JPanel body = new JPanel(new BorderLayout(10, 0));
+        body.setOpaque(false);
+
+        body.add(createLeftPanel(), BorderLayout.WEST);
+        body.add(createCenterPanel(), BorderLayout.CENTER);
+        body.add(createRightPanel(), BorderLayout.EAST);
+
+        add(body, BorderLayout.CENTER);
+
+        // F9 shortcut
+        getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("F9"), "pay");
+        getActionMap().put("pay", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleThanhToan(); }
+        });
+    }
+
+    /* ======================== HEADER ======================== */
+
+    private JPanel createHeader() {
+        JPanel h = new JPanel(new BorderLayout());
+        h.setOpaque(false);
+        h.setBorder(new EmptyBorder(0, 0, 10, 0));
+
+        JLabel t = new JLabel("Bán hàng");
+        t.setFont(F_TITLE);
+        t.setForeground(TXT1);
+        h.add(t, BorderLayout.WEST);
+
+        JLabel info = new JLabel("Quy trình: Tìm thuốc → Thêm vào hóa đơn → Thanh toán (F9)  •  Xuất kho tự động FEFO");
+        info.setFont(F_HINT);
+        info.setForeground(TXT2);
+        h.add(info, BorderLayout.EAST);
+
+        return h;
+    }
+
+    /* ======================== LEFT: Product Search (30%) ======================== */
+
+    private JPanel createLeftPanel() {
+        JPanel p = new JPanel(new BorderLayout(0, 8));
+        p.setBackground(CARD);
+        p.setBorder(cardBorder());
+        p.setPreferredSize(new Dimension(380, 0));
+
+        // Top: Search + filter
+        JPanel top = new JPanel();
+        top.setOpaque(false);
+        top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
+
+        JLabel lbl = label("Tìm thuốc", F_SEC, TXT1);
+        lbl.setAlignmentX(LEFT_ALIGNMENT);
+        top.add(lbl);
+        top.add(Box.createVerticalStrut(6));
+
+        txtSearch = new JTextField();
+        txtSearch.setFont(F_INPUT);
+        txtSearch.setPreferredSize(new Dimension(0, 38));
+        txtSearch.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        txtSearch.setAlignmentX(LEFT_ALIGNMENT);
+        txtSearch.putClientProperty("JTextField.placeholderText", "Mã, tên thuốc, hoạt chất...");
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER),
+            new EmptyBorder(4, 10, 4, 10)
+        ));
+
+        // Debounce search
+        javax.swing.Timer searchTimer = new javax.swing.Timer(250, e -> loadProducts(txtSearch.getText().trim()));
+        searchTimer.setRepeats(false);
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { searchTimer.restart(); }
+            public void removeUpdate(DocumentEvent e) { searchTimer.restart(); }
+            public void changedUpdate(DocumentEvent e) { searchTimer.restart(); }
+        });
+        // Enter to add first visible product
+        txtSearch.addActionListener(e -> addFirstProduct());
+        top.add(txtSearch);
+        top.add(Box.createVerticalStrut(6));
+
+        // Filter chips
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        filters.setOpaque(false);
+        filters.setAlignmentX(LEFT_ALIGNMENT);
+        filters.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+
+        lblProductCount = label("0 sản phẩm", F_LBL, TXT_M);
+        filters.add(lblProductCount);
+
+        top.add(filters);
+
+        p.add(top, BorderLayout.NORTH);
+
+        // Product table
+        mdlProduct = new DefaultTableModel(
+            new String[]{"Mã", "Tên thuốc", "ĐVT", "Giá bán", "Tồn", "T.Thái"}, 0
+        ) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        tblProduct = styledTable(mdlProduct);
+        tblProduct.getColumnModel().getColumn(5).setCellRenderer(new StatusBadgeRenderer());
+        setColWidths(tblProduct, 40, 140, 45, 75, 40, 60);
+
+        // Double-click to add
+        tblProduct.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) addSelectedProduct();
+            }
+        });
+        // Enter to add
+        tblProduct.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "addProd");
+        tblProduct.getActionMap().put("addProd", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { addSelectedProduct(); }
+        });
+
+        JScrollPane sp = new JScrollPane(tblProduct,
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        sp.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        p.add(sp, BorderLayout.CENTER);
+
+        return p;
+    }
+
+    /* ======================== CENTER: Invoice (45%) ======================== */
+
+    private JPanel createCenterPanel() {
+        JPanel p = new JPanel(new BorderLayout(0, 0));
+        p.setBackground(CARD);
+        p.setBorder(cardBorder());
+
+        // Header
+        JPanel hdr = new JPanel(new BorderLayout());
+        hdr.setOpaque(false);
+        hdr.setBorder(new EmptyBorder(0, 0, 8, 0));
+
+        JPanel hdrLeft = new JPanel();
+        hdrLeft.setOpaque(false);
+        hdrLeft.setLayout(new BoxLayout(hdrLeft, BoxLayout.Y_AXIS));
+
+        lblMaHoaDon = label("Chi tiết hóa đơn", F_SEC, TXT1);
+        lblMaHoaDon.setAlignmentX(LEFT_ALIGNMENT);
+        hdrLeft.add(lblMaHoaDon);
+        JLabel fefoHint = label("Xuất kho tự động theo FEFO", F_HINT, TXT_M);
+        fefoHint.setAlignmentX(LEFT_ALIGNMENT);
+        hdrLeft.add(fefoHint);
+        hdr.add(hdrLeft, BorderLayout.WEST);
+
+        // Toolbar buttons
+        JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        toolbar.setOpaque(false);
+        toolbar.add(outlineBtn("Tạo mới", BLUE, e -> handleTaoMoi()));
+        toolbar.add(outlineBtn("Xóa tất cả", RED, e -> handleXoaTatCa()));
+        hdr.add(toolbar, BorderLayout.EAST);
+
+        p.add(hdr, BorderLayout.NORTH);
+
+        // Invoice table
+        mdlInvoice = new ChiTietHoaDonTableModel();
+        tblInvoice = styledTable(mdlInvoice);
+        // Hide MaCTHD (col 0)
+        tblInvoice.getColumnModel().getColumn(0).setMinWidth(0);
+        tblInvoice.getColumnModel().getColumn(0).setMaxWidth(0);
+        tblInvoice.getColumnModel().getColumn(0).setPreferredWidth(0);
+        setColWidths(tblInvoice, 0, 50, 160, 70, 55, 80, 90);
+
+        // Right-align money columns
+        DefaultTableCellRenderer rightRenderer = new DefaultTableCellRenderer();
+        rightRenderer.setHorizontalAlignment(SwingConstants.RIGHT);
+        tblInvoice.getColumnModel().getColumn(5).setCellRenderer(rightRenderer);
+        tblInvoice.getColumnModel().getColumn(6).setCellRenderer(rightRenderer);
+
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        tblInvoice.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+
+        invoiceScroll = new JScrollPane(tblInvoice,
+            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        invoiceScroll.setBorder(BorderFactory.createLineBorder(BORDER));
+        invoiceScroll.getVerticalScrollBar().setUnitIncrement(16);
+
+        // Empty state
+        emptyState = new JPanel(new GridBagLayout());
+        emptyState.setBackground(CARD);
+        JPanel emptyContent = new JPanel();
+        emptyContent.setOpaque(false);
+        emptyContent.setLayout(new BoxLayout(emptyContent, BoxLayout.Y_AXIS));
+        JLabel ico = label("🛒", new Font("Segoe UI Emoji", Font.PLAIN, 40), TXT_M);
+        ico.setAlignmentX(CENTER_ALIGNMENT);
+        emptyContent.add(ico);
+        emptyContent.add(Box.createVerticalStrut(8));
+        JLabel et1 = label("Chưa có sản phẩm", F_SEC, TXT_M);
+        et1.setAlignmentX(CENTER_ALIGNMENT);
+        emptyContent.add(et1);
+        JLabel et2 = label("Double-click hoặc Enter từ danh sách thuốc bên trái", F_HINT, TXT_M);
+        et2.setAlignmentX(CENTER_ALIGNMENT);
+        emptyContent.add(et2);
+        emptyState.add(emptyContent);
+
+        // Card layout switch
+        JPanel tableArea = new JPanel(new CardLayout());
+        tableArea.add(emptyState, "empty");
+        tableArea.add(invoiceScroll, "table");
+        p.add(tableArea, BorderLayout.CENTER);
+
+        // Bottom: edit toolbar + total
+        JPanel bottom = new JPanel(new BorderLayout(0, 8));
+        bottom.setOpaque(false);
+        bottom.setBorder(new EmptyBorder(8, 0, 0, 0));
+
+        // Edit toolbar
+        JPanel editBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        editBar.setOpaque(false);
+
+        JButton btnSuaSL = outlineBtn("✏ Sửa SL", ORANGE, e -> handleSuaSoLuong());
+        JButton btnXoaDong = outlineBtn("🗑 Xóa dòng", RED, e -> handleXoaDong());
+        btnSuaSL.setEnabled(false);
+        btnXoaDong.setEnabled(false);
+        editBar.add(btnSuaSL);
+        editBar.add(btnXoaDong);
+        editBar.add(label("← Chọn dòng để thao tác", F_HINT, TXT_M));
+
+        tblInvoice.getSelectionModel().addListSelectionListener(e -> {
+            boolean sel = tblInvoice.getSelectedRow() >= 0;
+            btnSuaSL.setEnabled(sel);
+            btnXoaDong.setEnabled(sel);
+        });
+
+        bottom.add(editBar, BorderLayout.NORTH);
+
+        // Total ribbon
+        JPanel totalBar = new JPanel(new BorderLayout());
+        totalBar.setBackground(new Color(239, 246, 255));
+        totalBar.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(191, 219, 254)),
+            new EmptyBorder(12, 16, 12, 16)
+        ));
+
+        JLabel ltl = label("TỔNG TIỀN:", new Font("Segoe UI", Font.BOLD, 16), BLUE);
+        totalBar.add(ltl, BorderLayout.WEST);
+
+        lblTongTien = new JLabel("0 ₫");
+        lblTongTien.setFont(F_TOTAL);
+        lblTongTien.setForeground(RED);
+        totalBar.add(lblTongTien, BorderLayout.EAST);
+
+        bottom.add(totalBar, BorderLayout.SOUTH);
+
+        p.add(bottom, BorderLayout.SOUTH);
+
+        return p;
+    }
+
+    /* ======================== RIGHT: Payment (25%) ======================== */
+
+    private JPanel createRightPanel() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(CARD);
+        p.setBorder(cardBorder());
+        p.setPreferredSize(new Dimension(280, 0));
+
+        // === A. Khách hàng ===
+        p.add(sectionLabel("Khách hàng"));
+        p.add(Box.createVerticalStrut(6));
+
+        // Selected customer
+        JPanel selPanel = new JPanel(new BorderLayout(4, 0));
+        selPanel.setOpaque(true);
+        selPanel.setBackground(new Color(248, 250, 252));
+        selPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER),
+            new EmptyBorder(6, 10, 6, 6)
+        ));
+        selPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        selPanel.setAlignmentX(LEFT_ALIGNMENT);
+
+        lblKhachHang = new JLabel("Khách lẻ");
+        lblKhachHang.setFont(F_LBL);
+        lblKhachHang.setForeground(TXT_M);
+        selPanel.add(lblKhachHang, BorderLayout.CENTER);
+
+        btnXoaKH = new JButton("✕");
+        btnXoaKH.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        btnXoaKH.setForeground(RED);
+        btnXoaKH.setContentAreaFilled(false);
+        btnXoaKH.setBorderPainted(false);
+        btnXoaKH.setFocusPainted(false);
+        btnXoaKH.setPreferredSize(new Dimension(24, 24));
+        btnXoaKH.setVisible(false);
+        btnXoaKH.addActionListener(e -> clearKhachHang());
+        selPanel.add(btnXoaKH, BorderLayout.EAST);
+
+        p.add(selPanel);
+        p.add(Box.createVerticalStrut(6));
+
+        // Search KH
+        txtTimKH = new JTextField();
+        txtTimKH.setFont(F_INPUT);
+        txtTimKH.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        txtTimKH.setAlignmentX(LEFT_ALIGNMENT);
+        txtTimKH.putClientProperty("JTextField.placeholderText", "Tìm tên/SĐT khách hàng...");
+        txtTimKH.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER),
+            new EmptyBorder(4, 8, 4, 8)
+        ));
+        p.add(txtTimKH);
+        setupKHAutocomplete();
+
+        p.add(Box.createVerticalStrut(4));
+
+        // Quick buttons
+        JPanel khBtns = new JPanel(new GridLayout(1, 2, 4, 0));
+        khBtns.setOpaque(false);
+        khBtns.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        khBtns.setAlignmentX(LEFT_ALIGNMENT);
+        JButton btnKhachLe = smallBtn("Khách lẻ", TXT2);
+        btnKhachLe.addActionListener(e -> clearKhachHang());
+        khBtns.add(btnKhachLe);
+        JButton btnThemKH = smallBtn("+ Thêm KH", BLUE);
+        btnThemKH.addActionListener(e -> handleThemKH());
+        khBtns.add(btnThemKH);
+        p.add(khBtns);
+
+        // === Divider ===
+        p.add(Box.createVerticalStrut(12));
+        p.add(divider());
+        p.add(Box.createVerticalStrut(12));
+
+        // === B. Tóm tắt thanh toán ===
+        p.add(sectionLabel("Thanh toán"));
+        p.add(Box.createVerticalStrut(8));
+
+        lblSummaryTotal = new JLabel("0 ₫");
+        p.add(summaryRow("Tổng tiền hàng:", lblSummaryTotal, F_MONEY, RED));
+        p.add(Box.createVerticalStrut(10));
+
+        // Tiền khách đưa
+        JLabel lk = label("Tiền khách đưa:", F_LBL, TXT1);
+        lk.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(lk);
+        p.add(Box.createVerticalStrut(3));
+
+        txtTienKhach = new JTextField();
+        txtTienKhach.setFont(F_INPUT);
+        txtTienKhach.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        txtTienKhach.setAlignmentX(LEFT_ALIGNMENT);
+        txtTienKhach.putClientProperty("JTextField.placeholderText", "Nhập số tiền...");
+        txtTienKhach.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER),
+            new EmptyBorder(4, 8, 4, 8)
+        ));
+        txtTienKhach.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { calcTienThua(); }
+            public void removeUpdate(DocumentEvent e) { calcTienThua(); }
+            public void changedUpdate(DocumentEvent e) { calcTienThua(); }
+        });
+        p.add(txtTienKhach);
+        p.add(Box.createVerticalStrut(6));
+
+        lblTienThua = new JLabel("0 ₫");
+        p.add(summaryRow("Tiền thừa:", lblTienThua, F_MONEY, GREEN));
+
+        // === Divider ===
+        p.add(Box.createVerticalStrut(12));
+        p.add(divider());
+        p.add(Box.createVerticalStrut(12));
+
+        // === C. Phương thức ===
+        p.add(sectionLabel("Phương thức thanh toán"));
+        p.add(Box.createVerticalStrut(6));
+        JPanel ptPanel = new JPanel(new GridLayout(1, 2, 4, 0));
+        ptPanel.setOpaque(false);
+        ptPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        ptPanel.setAlignmentX(LEFT_ALIGNMENT);
+        // TODO: toggle group to select payment method
+        ptPanel.add(smallBtn("Tiền mặt ✓", GREEN));
+        ptPanel.add(smallBtn("Chuyển khoản", TXT2));
+        p.add(ptPanel);
+
+        // Spacer
+        p.add(Box.createVerticalGlue());
+
+        // === D. Action buttons ===
+        p.add(Box.createVerticalStrut(10));
+
+        JButton btnPay = new JButton("THANH TOÁN  (F9)");
+        btnPay.setFont(F_PAY_BTN);
+        btnPay.setBackground(GREEN);
+        btnPay.setForeground(Color.WHITE);
+        btnPay.setFocusPainted(false);
+        btnPay.setBorderPainted(false);
+        btnPay.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        btnPay.setAlignmentX(LEFT_ALIGNMENT);
+        btnPay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnPay.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) { btnPay.setBackground(GREEN.darker()); }
+            public void mouseExited(java.awt.event.MouseEvent e) { btnPay.setBackground(GREEN); }
+        });
+        btnPay.addActionListener(e -> handleThanhToan());
+        p.add(btnPay);
+        p.add(Box.createVerticalStrut(6));
+
+        JPanel subBtns = new JPanel(new GridLayout(1, 2, 4, 0));
+        subBtns.setOpaque(false);
+        subBtns.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        subBtns.setAlignmentX(LEFT_ALIGNMENT);
+        subBtns.add(outlineBtn("Hủy hóa đơn", RED, e -> handleHuy()));
+        subBtns.add(outlineBtn("In hóa đơn", BLUE, e -> { /* TODO */ }));
+        p.add(subBtns);
+
+        return p;
+    }
+
+    /* ================================================================
+       WIDGET HELPERS
+       ================================================================ */
+
+    private JLabel label(String t, Font f, Color c) {
+        JLabel l = new JLabel(t);
+        l.setFont(f);
+        l.setForeground(c);
+        return l;
+    }
+
+    private JLabel sectionLabel(String text) {
+        JLabel l = label(text, F_SEC, TXT1);
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        l.setBorder(new EmptyBorder(0, 0, 0, 0));
+        return l;
+    }
+
+    private JSeparator divider() {
+        JSeparator s = new JSeparator();
+        s.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        s.setForeground(DIVIDER);
+        return s;
+    }
+
+    private JPanel summaryRow(String label, JLabel valueLabel, Font vFont, Color vColor) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(false);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.add(label(label, F_LBL, TXT1), BorderLayout.WEST);
+        valueLabel.setFont(vFont);
+        valueLabel.setForeground(vColor);
+        row.add(valueLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    private javax.swing.border.Border cardBorder() {
+        return BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER), new EmptyBorder(14, 14, 14, 14));
+    }
+
+    private JButton outlineBtn(String text, Color color, java.awt.event.ActionListener action) {
+        JButton b = new JButton(text);
+        b.setFont(F_BTN);
+        b.setForeground(color);
+        b.setBackground(CARD);
+        b.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color),
+            new EmptyBorder(4, 10, 4, 10)
+        ));
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.addActionListener(action);
+        return b;
+    }
+
+    private JButton smallBtn(String text, Color fg) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        b.setForeground(fg);
+        b.setBackground(CARD);
+        b.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(BORDER),
+            new EmptyBorder(3, 6, 3, 6)
+        ));
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return b;
+    }
+
+    private JTable styledTable(DefaultTableModel model) {
+        JTable t = new JTable(model);
+        t.setRowHeight(36);
+        t.setFont(F_TABLE);
+        t.setShowGrid(false);
+        t.setShowHorizontalLines(true);
+        t.setGridColor(DIVIDER);
+        t.setSelectionBackground(new Color(219, 234, 254));
+        t.setSelectionForeground(TXT1);
+        t.setIntercellSpacing(new Dimension(0, 0));
+        t.setFillsViewportHeight(true);
+        t.getTableHeader().setReorderingAllowed(false);
+
+        JTableHeader hdr = t.getTableHeader();
+        hdr.setFont(F_TH);
+        hdr.setBackground(HDR_BG);
+        hdr.setForeground(TXT2);
+        hdr.setBorder(new MatteBorder(0, 0, 2, 0, BORDER));
+        hdr.setPreferredSize(new Dimension(0, 38));
+
+        // Hover + alternating renderer
+        t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            private int hRow = -1;
+            private boolean attached;
+            @Override
+            public Component getTableCellRendererComponent(JTable tbl, Object val,
+                    boolean isSel, boolean focus, int row, int col) {
+                if (!attached) {
+                    attached = true;
+                    tbl.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+                        @Override public void mouseMoved(java.awt.event.MouseEvent e) {
+                            int r = tbl.rowAtPoint(e.getPoint());
+                            if (r != hRow) { hRow = r; tbl.repaint(); }
+                        }
+                    });
+                    tbl.addMouseListener(new java.awt.event.MouseAdapter() {
+                        @Override public void mouseExited(java.awt.event.MouseEvent e) { hRow = -1; tbl.repaint(); }
+                    });
+                }
+                Component c = super.getTableCellRendererComponent(tbl, val, isSel, focus, row, col);
+                if (!isSel) c.setBackground(row == hRow ? HOVER : (row % 2 == 0 ? CARD : ALT));
+                setBorder(new EmptyBorder(0, 8, 0, 8));
+                return c;
+            }
+        });
+        return t;
+    }
+
+    private void setColWidths(JTable t, int... w) {
+        var cm = t.getColumnModel();
+        for (int i = 0; i < w.length && i < cm.getColumnCount(); i++)
+            cm.getColumn(i).setPreferredWidth(w[i]);
+    }
+
+    /* ================================================================
+       CUSTOMER AUTOCOMPLETE
+       ================================================================ */
+
+    private void setupKHAutocomplete() {
+        khModel = new DefaultListModel<>();
+        khList = new JList<>(khModel);
+        khList.setFont(F_INPUT);
+        khList.setFixedCellHeight(34);
+        khList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        popupKH = new JPopupMenu();
+        popupKH.setBorder(BorderFactory.createLineBorder(BORDER));
+        JScrollPane sp = new JScrollPane(khList);
+        sp.setBorder(null);
+        sp.setPreferredSize(new Dimension(260, 170));
+        popupKH.add(sp);
+
+        khList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && khList.getSelectedIndex() >= 0) {
+                int idx = khList.getSelectedIndex();
+                if (khCache != null && idx < khCache.size()) {
+                    selectKH(khCache.get(idx));
+                    popupKH.setVisible(false);
+                }
+            }
+        });
+
+        searchKHTimer = new javax.swing.Timer(300, e -> doSearchKH());
+        searchKHTimer.setRepeats(false);
+
+        txtTimKH.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { searchKHTimer.restart(); }
+            public void removeUpdate(DocumentEvent e) { searchKHTimer.restart(); }
+            public void changedUpdate(DocumentEvent e) { searchKHTimer.restart(); }
+        });
+    }
+
+    private void doSearchKH() {
+        String kw = txtTimKH.getText().trim();
+        if (kw.length() < 1) { popupKH.setVisible(false); return; }
+        khCache = khDao.searchByNameOrPhone(kw);
+        khModel.clear();
+        if (khCache.isEmpty()) {
+            khModel.addElement("Không tìm thấy \"" + kw + "\"");
+        } else {
+            for (var kh : khCache) {
+                khModel.addElement(kh.getHoTen() + "  |  " +
+                    (kh.getSoDienThoai() != null ? kh.getSoDienThoai() : "--") +
+                    "  (Mã: " + kh.getMaKhachHang() + ")");
+            }
+        }
+        if (!popupKH.isVisible()) popupKH.show(txtTimKH, 0, txtTimKH.getHeight());
+        popupKH.setPopupSize(txtTimKH.getWidth(), Math.min(khCache.size() * 36 + 10, 200));
+    }
+
+    private void selectKH(KhachHang kh) {
+        selectedMaKH = kh.getMaKhachHang();
+        lblKhachHang.setText("✓ " + kh.getHoTen() +
+            (kh.getSoDienThoai() != null ? "  •  " + kh.getSoDienThoai() : ""));
+        lblKhachHang.setForeground(GREEN);
+        btnXoaKH.setVisible(true);
+        txtTimKH.setText("");
+    }
+
+    private void clearKhachHang() {
+        selectedMaKH = null;
+        lblKhachHang.setText("Khách lẻ");
+        lblKhachHang.setForeground(TXT_M);
+        btnXoaKH.setVisible(false);
+    }
+
+    private void handleThemKH() {
+        JTextField fName = new JTextField();
+        JTextField fPhone = new JTextField();
+        Object[] msg = {"Họ tên:", fName, "Số điện thoại:", fPhone};
+        int opt = JOptionPane.showConfirmDialog(this, msg, "Thêm khách hàng mới", JOptionPane.OK_CANCEL_OPTION);
+        if (opt == JOptionPane.OK_OPTION) {
+            String name = fName.getText().trim();
+            String phone = fPhone.getText().trim();
+            if (name.isEmpty() || phone.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập đủ họ tên và SĐT!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            var kh = new KhachHang();
+            kh.setHoTen(name);
+            kh.setSoDienThoai(phone);
+            Integer id = khDao.insertAndGetId(kh);
+            if (id != null) {
+                kh.setMaKhachHang(id);
+                selectKH(kh);
+                JOptionPane.showMessageDialog(this, "Thêm KH thành công! Mã: " + id, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Thêm KH thất bại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    /* ================================================================
+       PRODUCT LOADING
+       ================================================================ */
+
+    private void loadProducts(String keyword) {
+        SwingUtilities.invokeLater(() -> {
+            productCache = spDao.searchForSale(keyword);
+            mdlProduct.setRowCount(0);
+            for (SanPham sp : productCache) {
+                String status;
+                if (sp.getTongTon() <= 0) status = "Hết hàng";
+                else if (sp.getTongTon() <= sp.getMucTonToiThieu()) status = "Sắp hết";
+                else status = "Còn hàng";
+
+                mdlProduct.addRow(new Object[]{
+                    sp.getMaSanPham(),
+                    sp.getTenSanPham(),
+                    sp.getDonViTinh(),
+                    VND.format(sp.getGiaBanDeXuat() != null ? sp.getGiaBanDeXuat() : BigDecimal.ZERO),
+                    sp.getTongTon(),
+                    status
+                });
+            }
+            lblProductCount.setText(productCache.size() + " sản phẩm");
+        });
+    }
+
+    /* ================================================================
+       ADD PRODUCT TO INVOICE
+       ================================================================ */
+
+    private void addFirstProduct() {
+        if (mdlProduct.getRowCount() > 0) {
+            tblProduct.setRowSelectionInterval(0, 0);
+            addSelectedProduct();
+        }
+    }
+
+    private void addSelectedProduct() {
+        int row = tblProduct.getSelectedRow();
+        if (row < 0) return;
+
+        int maSP = (int) mdlProduct.getValueAt(row, 0);
+        String tenSP = (String) mdlProduct.getValueAt(row, 1);
+        int ton = (int) mdlProduct.getValueAt(row, 4);
+        String status = (String) mdlProduct.getValueAt(row, 5);
+
+        if ("Hết hàng".equals(status) || ton <= 0) {
+            JOptionPane.showMessageDialog(this,
+                "\"" + tenSP + "\" đã hết hàng!", "Không thể thêm", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Auto-create invoice if needed
+        if (currentMaHoaDon == null) {
+            Integer id = hoaDonDao.createHoaDon(currentUser.getMaNguoiDung(), selectedMaKH, "");
+            if (id == null) {
+                JOptionPane.showMessageDialog(this,
+                    "Không thể tạo hóa đơn!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            currentMaHoaDon = id;
+            lblMaHoaDon.setText("Chi tiết hóa đơn  #HD" + String.format("%04d", id));
+        }
+
+        // Sell using FEFO (1 unit default)
+        if (hoaDonDao.sellProductFEFO(currentMaHoaDon, maSP, 1, null)) {
+            loadInvoiceDetails();
+            // Refresh product stock
+            loadProducts(txtSearch.getText().trim());
+            txtSearch.requestFocusInWindow();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Thêm \"" + tenSP + "\" thất bại!\nKiểm tra tồn kho.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /* ================================================================
+       INVOICE MANAGEMENT
+       ================================================================ */
+
+    private void loadInvoiceDetails() {
+        if (currentMaHoaDon == null) return;
+        mdlInvoice.setRowCount(0);
+        var list = cthdDao.getDetailForDisplay(currentMaHoaDon);
+        for (var row : list) mdlInvoice.addRow(row);
+        updateTongTien();
+        updateTableVisibility();
+    }
+
+    private void updateTongTien() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < mdlInvoice.getRowCount(); i++) {
+            BigDecimal tt = (BigDecimal) mdlInvoice.getValueAt(i, 6);
+            if (tt != null) total = total.add(tt);
+        }
+        lblTongTien.setText(VND.format(total));
+        lblSummaryTotal.setText(VND.format(total));
+        calcTienThua();
+    }
+
+    private void calcTienThua() {
+        try {
+            BigDecimal total = BigDecimal.ZERO;
+            for (int i = 0; i < mdlInvoice.getRowCount(); i++) {
+                BigDecimal tt = (BigDecimal) mdlInvoice.getValueAt(i, 6);
+                if (tt != null) total = total.add(tt);
+            }
+            String txt = txtTienKhach.getText().trim().replaceAll("[^\\d]", "");
+            if (!txt.isEmpty()) {
+                BigDecimal tienKhach = new BigDecimal(txt);
+                BigDecimal thua = tienKhach.subtract(total);
+                lblTienThua.setText(VND.format(thua.max(BigDecimal.ZERO)));
+                lblTienThua.setForeground(thua.signum() >= 0 ? GREEN : RED);
+            } else {
+                lblTienThua.setText("0 ₫");
+                lblTienThua.setForeground(TXT_M);
+            }
+        } catch (NumberFormatException ex) {
+            lblTienThua.setText("–");
+            lblTienThua.setForeground(TXT_M);
+        }
+    }
+
+    private void updateTableVisibility() {
+        JPanel area = (JPanel) invoiceScroll.getParent();
+        CardLayout cl = (CardLayout) area.getLayout();
+        cl.show(area, mdlInvoice.getRowCount() == 0 ? "empty" : "table");
+    }
+
+    /* ================================================================
+       BUTTON HANDLERS
+       ================================================================ */
+
+    private void handleTaoMoi() {
+        if (currentMaHoaDon != null && mdlInvoice.getRowCount() > 0) {
+            int opt = JOptionPane.showConfirmDialog(this,
+                "Hóa đơn hiện tại sẽ bị hủy. Tiếp tục?", "Tạo mới", JOptionPane.YES_NO_OPTION);
+            if (opt != JOptionPane.YES_OPTION) return;
+        }
+        resetForm();
+    }
+
+    private void handleXoaTatCa() {
+        if (mdlInvoice.getRowCount() == 0) return;
+        int opt = JOptionPane.showConfirmDialog(this,
+            "Xóa tất cả sản phẩm khỏi hóa đơn?", "Xác nhận", JOptionPane.YES_NO_OPTION);
+        if (opt == JOptionPane.YES_OPTION) {
+            // Delete all invoice items
+            for (int i = mdlInvoice.getRowCount() - 1; i >= 0; i--) {
+                int maCTHD = (int) mdlInvoice.getValueAt(i, 0);
+                cthdDao.deleteChiTiet(maCTHD);
+            }
+            loadInvoiceDetails();
+            loadProducts(txtSearch.getText().trim());
+        }
+    }
+
+    private void handleSuaSoLuong() {
+        int row = tblInvoice.getSelectedRow();
+        if (row < 0) return;
+        int maCTHD = (int) mdlInvoice.getValueAt(row, 0);
+        String tenSP = (String) mdlInvoice.getValueAt(row, 2);
+        int slCu = (int) mdlInvoice.getValueAt(row, 4);
+
+        String input = JOptionPane.showInputDialog(this,
+            "Sản phẩm: " + tenSP + "\nSố lượng hiện tại: " + slCu + "\n\nNhập số lượng mới:",
+            "Sửa số lượng", JOptionPane.PLAIN_MESSAGE);
+        if (input == null || input.trim().isEmpty()) return;
+
+        int slMoi;
+        try {
+            slMoi = Integer.parseInt(input.trim());
+            if (slMoi <= 0) throw new NumberFormatException();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,
+                "Số lượng phải là số nguyên dương!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (slMoi == slCu) return;
+
+        if (cthdDao.updateSoLuong(maCTHD, slMoi)) {
+            loadInvoiceDetails();
+            loadProducts(txtSearch.getText().trim());
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Cập nhật thất bại! Có thể không đủ tồn kho.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void handleXoaDong() {
+        int row = tblInvoice.getSelectedRow();
+        if (row < 0) return;
+        int maCTHD = (int) mdlInvoice.getValueAt(row, 0);
+        String tenSP = (String) mdlInvoice.getValueAt(row, 2);
+        int sl = (int) mdlInvoice.getValueAt(row, 4);
+
+        int opt = JOptionPane.showConfirmDialog(this,
+            "Xóa: " + tenSP + " (SL: " + sl + ")?\nTồn kho sẽ được hoàn trả.",
+            "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+        if (opt == JOptionPane.YES_OPTION) {
+            if (cthdDao.deleteChiTiet(maCTHD)) {
+                loadInvoiceDetails();
+                loadProducts(txtSearch.getText().trim());
+            }
+        }
+    }
+
+    private void handleThanhToan() {
+        if (currentMaHoaDon == null) {
+            JOptionPane.showMessageDialog(this,
+                "Chưa có hóa đơn!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (mdlInvoice.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this,
+                "Hóa đơn chưa có sản phẩm!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Calculate total
+        BigDecimal total = BigDecimal.ZERO;
+        for (int i = 0; i < mdlInvoice.getRowCount(); i++) {
+            BigDecimal tt = (BigDecimal) mdlInvoice.getValueAt(i, 6);
+            if (tt != null) total = total.add(tt);
+        }
+
+        // Validate tiền khách nếu có nhập
+        String tienStr = txtTienKhach.getText().trim().replaceAll("[^\\d]", "");
+        if (!tienStr.isEmpty()) {
+            BigDecimal tienKhach = new BigDecimal(tienStr);
+            if (tienKhach.compareTo(total) < 0) {
+                JOptionPane.showMessageDialog(this,
+                    "Tiền khách đưa chưa đủ!\nCần: " + VND.format(total) + "\nĐã đưa: " + VND.format(tienKhach),
+                    "Thiếu tiền", JOptionPane.WARNING_MESSAGE);
+                txtTienKhach.requestFocus();
+                return;
+            }
+        }
+
+        int opt = JOptionPane.showConfirmDialog(this,
+            "Xác nhận thanh toán hóa đơn #HD" + String.format("%04d", currentMaHoaDon) +
+            "?\n\nTổng tiền: " + VND.format(total),
+            "Thanh toán", JOptionPane.YES_NO_OPTION);
+        if (opt == JOptionPane.YES_OPTION) {
+            JOptionPane.showMessageDialog(this,
+                "✅ Thanh toán thành công!\nMã HĐ: HD" + String.format("%04d", currentMaHoaDon) +
+                "\nTổng: " + VND.format(total),
+                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            resetForm();
+        }
+    }
+
+    private void handleHuy() {
+        if (currentMaHoaDon == null) return;
+        int opt = JOptionPane.showConfirmDialog(this,
+            "Hủy hóa đơn #HD" + String.format("%04d", currentMaHoaDon) + "?",
+            "Xác nhận", JOptionPane.YES_NO_OPTION);
+        if (opt == JOptionPane.YES_OPTION) {
+            // Delete all items to restore stock
+            for (int i = mdlInvoice.getRowCount() - 1; i >= 0; i--) {
+                int maCTHD = (int) mdlInvoice.getValueAt(i, 0);
+                cthdDao.deleteChiTiet(maCTHD);
+            }
+            resetForm();
+        }
+    }
+
+    private void resetForm() {
+        currentMaHoaDon = null;
+        selectedMaKH = null;
+        lblMaHoaDon.setText("Chi tiết hóa đơn");
+        clearKhachHang();
+        txtTimKH.setText("");
+        txtTienKhach.setText("");
+        lblTienThua.setText("0 ₫");
+        mdlInvoice.setRowCount(0);
+        updateTongTien();
+        updateTableVisibility();
+        loadProducts(null);
+        SwingUtilities.invokeLater(() -> txtSearch.requestFocusInWindow());
+    }
 }
