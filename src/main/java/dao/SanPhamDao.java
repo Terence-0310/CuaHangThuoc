@@ -238,6 +238,53 @@ public class SanPhamDao {
 	}
 
 	/**
+	 * Tìm sản phẩm theo tên kể cả đã xóa (Dùng cho NhapHangPanel - resurrection)
+	 */
+	public SanPham findByNameIncludingDeleted(String exactName) {
+		if (exactName == null || exactName.trim().isEmpty()) return null;
+		try (
+				var con = ConnectDB.getCon();
+				var ps = con.prepareStatement("SELECT * FROM SanPham WHERE TenSanPham = ?")) {
+			ps.setNString(1, exactName.trim());
+			var rs = ps.executeQuery();
+			if (rs.next()) return mapResultSet(rs);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * Khôi phục sản phẩm đã xóa mềm (DaXoa = 0)
+	 */
+	public boolean resurrect(int maSanPham) {
+		try (
+				var con = ConnectDB.getCon();
+				var ps = con.prepareStatement("UPDATE SanPham SET DaXoa = 0 WHERE MaSanPham = ?")) {
+			ps.setInt(1, maSanPham);
+			return ps.executeUpdate() > 0;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	/**
+	 * Đồng bộ tổng tồn từ LoHang lên SanPham (nếu bảng có cột TongTon); ngược lại no-op.
+	 */
+	public void updateTotalQuantity(int maSanPham) {
+		try (var con = ConnectDB.getCon();
+			 var ps = con.prepareStatement(
+				"UPDATE SanPham SET TongTon = (SELECT ISNULL(SUM(SoLuongTon), 0) FROM LoHang lh WHERE lh.MaSanPham = ? AND lh.DaXoa = 0) WHERE MaSanPham = ?")) {
+			ps.setInt(1, maSanPham);
+			ps.setInt(2, maSanPham);
+			ps.executeUpdate();
+		} catch (Exception e) {
+			// Bảng có thể không có cột TongTon -> bỏ qua
+		}
+	}
+
+	/**
 	 * Thêm sản phẩm mới
 	 */
 	public boolean insert(SanPham sp) {
@@ -363,7 +410,7 @@ public class SanPhamDao {
 		sp.setTenSanPham(rs.getString("TenSanPham"));
 		sp.setDonViTinh(rs.getString("DonViTinh"));
 		sp.setGiaBanDeXuat(rs.getBigDecimal("GiaBanDeXuat"));
-		sp.setLoaiSanPham(rs.getString("LoaiSanPham"));
+		try { sp.setLoaiSanPham(rs.getString("LoaiSanPham")); } catch (Exception ignore) {}
 		sp.setMoTa(rs.getString("MoTa"));
 		sp.setMucTonToiThieu(rs.getInt("MucTonToiThieu"));
 

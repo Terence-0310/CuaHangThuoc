@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public class SanPham {
 	private int maSanPham;
 	private String tenSanPham;
+	private String loaiSanPham;
 	private String donViTinh;
 	private BigDecimal giaBanDeXuat;
 	private String moTa;
@@ -47,6 +48,9 @@ public class SanPham {
 
 	public String getTenSanPham() { return tenSanPham; }
 	public void setTenSanPham(String tenSanPham) { this.tenSanPham = tenSanPham; }
+
+	public String getLoaiSanPham() { return loaiSanPham; }
+	public void setLoaiSanPham(String loaiSanPham) { this.loaiSanPham = loaiSanPham; }
 
 	public BigDecimal getGiaBanDeXuat() { return giaBanDeXuat; }
 	public void setGiaBanDeXuat(BigDecimal giaBanDeXuat) { this.giaBanDeXuat = giaBanDeXuat; }
