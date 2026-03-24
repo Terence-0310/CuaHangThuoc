@@ -5,8 +5,10 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>aptech</groupId>
-	<artifactId>swing007</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<artifactId>pharmacy-management</artifactId>
+	<version>1.0.0</version>
+	<packaging>jar</packaging>
+	<name>Pharmacy Store Management</name>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -53,6 +55,20 @@
 			<version>3.2.5</version>
 		</dependency>
 
+		<!-- JCalendar - Date Picker cho Swing (HanSuDung, NgayNhap) -->
+		<dependency>
+			<groupId>com.toedter</groupId>
+			<artifactId>jcalendar</artifactId>
+			<version>1.4</version>
+		</dependency>
+
+		<!-- SLF4J - Logger (HikariCP cần) -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-simple</artifactId>
+			<version>2.0.9</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
@@ -71,7 +87,7 @@
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>3.1.0</version>
 				<configuration>
-					<mainClass>app.LoginFrame</mainClass>
+					<mainClass>App</mainClass>
 					<systemProperties>
 						<systemProperty>
 							<key>file.encoding</key>
@@ -96,6 +112,26 @@
 						<id>test-db</id>
 						<configuration>
 							<mainClass>common.ConnectDBTest</mainClass>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Fat JAR: đóng gói tất cả dependencies vào 1 file JAR -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.5.1</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals><goal>shade</goal></goals>
+						<configuration>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>App</mainClass>
+								</transformer>
+							</transformers>
 						</configuration>
 					</execution>
 				</executions>
