@@ -61,6 +61,8 @@ public class POSPanel extends JPanel {
     private JPanel cashFieldsPanel;
     private JButton btnCheckout, btnClearCart, btnHoldOrder, btnViewHeld;
     private JLabel lblHeldBadge;
+    private Timer searchTimer;
+    private Timer phoneTimer;
 
     // === Held Orders ===
     private final List<domain.dto.HeldOrder> heldOrders = new ArrayList<>();
@@ -452,7 +454,7 @@ public class POSPanel extends JPanel {
         });
         addFormField(cashFieldsPanel, "Tiền khách đưa:", txtTienKhachDua);
 
-        lblTienThoi = new JLabel("Tiền thối: ---");
+        lblTienThoi = new JLabel("Tiền thừa: ---");
         lblTienThoi.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTienThoi.setForeground(AppColors.SUCCESS);
         lblTienThoi.setAlignmentX(LEFT_ALIGNMENT);
@@ -467,7 +469,7 @@ public class POSPanel extends JPanel {
                 cashFieldsPanel.setVisible(isCash);
                 if (!isCash) {
                     txtTienKhachDua.setText("");
-                    lblTienThoi.setText("Tiền thối: ---");
+                    lblTienThoi.setText("Tiền thừa: ---");
                 }
             }
         });
@@ -558,7 +560,6 @@ public class POSPanel extends JPanel {
     //  PRODUCT SEARCH (★ Risk 2: Loại bỏ SP hết hạn / hết tồn)
     // ================================================================
 
-    private Timer searchTimer;
     private void onProductSearch() {
         if (searchTimer != null) searchTimer.stop();
         searchTimer = new Timer(250, e -> {
@@ -573,7 +574,6 @@ public class POSPanel extends JPanel {
     //  CUSTOMER AUTO-SUGGEST (Nhập SĐT → tự điền tên + giới tính)
     // ================================================================
 
-    private Timer phoneTimer;
     private void onPhoneChanged() {
         if (phoneTimer != null) phoneTimer.stop();
         phoneTimer = new Timer(300, e -> {
@@ -710,7 +710,7 @@ public class POSPanel extends JPanel {
         txtCustomerName.setText("");
         cboGioiTinh.setSelectedIndex(0);
         txtTienKhachDua.setText("");
-        lblTienThoi.setText("Tiền thối: ---");
+        lblTienThoi.setText("Tiền thừa: ---");
         lblPhoneSuggest.setText(" ");
         txtCustomerName.setEditable(true);
         cboGioiTinh.setEnabled(true);
@@ -960,7 +960,7 @@ public class POSPanel extends JPanel {
         try {
             String raw = txtTienKhachDua.getText().replace(",", "").replace(".", "").trim();
             if (raw.isEmpty()) {
-                lblTienThoi.setText("Tiền thối: ---");
+                lblTienThoi.setText("Tiền thừa: ---");
                 lblTienThoi.setForeground(AppColors.TEXT_SECONDARY);
                 return;
             }
@@ -972,11 +972,11 @@ public class POSPanel extends JPanel {
                 lblTienThoi.setText("Thiếu: " + MONEY_FMT.format(thoi.abs()) + " VNĐ");
                 lblTienThoi.setForeground(AppColors.DANGER);
             } else {
-                lblTienThoi.setText("Tiền thối: " + MONEY_FMT.format(thoi) + " VNĐ");
+                lblTienThoi.setText("Tiền thừa: " + MONEY_FMT.format(thoi) + " VNĐ");
                 lblTienThoi.setForeground(AppColors.SUCCESS);
             }
         } catch (NumberFormatException e) {
-            lblTienThoi.setText("Tiền thối: ---");
+            lblTienThoi.setText("Tiền thừa: ---");
             lblTienThoi.setForeground(AppColors.TEXT_SECONDARY);
         }
     }
@@ -1241,8 +1241,18 @@ public class POSPanel extends JPanel {
         bottomPanel.add(chkConfirm);
 
         // Buttons
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 16, 8));
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 8));
         btnPanel.setBackground(Color.WHITE);
+
+        JButton btnPrintQR = new JButton("In QR PDF");
+        btnPrintQR.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnPrintQR.setBackground(new Color(0x17, 0xA2, 0xB8));
+        btnPrintQR.setForeground(Color.WHITE);
+        btnPrintQR.setFocusPainted(false);
+        btnPrintQR.setBorderPainted(false);
+        btnPrintQR.setPreferredSize(new Dimension(120, 40));
+        btnPrintQR.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnPrintQR.addActionListener(e -> exportQrPdf(qrUrl, amount, accountName, accountNo));
 
         JButton btnConfirm = new JButton("Xác nhận đã thanh toán");
         btnConfirm.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -1251,11 +1261,10 @@ public class POSPanel extends JPanel {
         btnConfirm.setFocusPainted(false);
         btnConfirm.setBorderPainted(false);
         btnConfirm.setPreferredSize(new Dimension(220, 40));
-        btnConfirm.setEnabled(false); // disabled until checkbox
+        btnConfirm.setEnabled(false);
         btnConfirm.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnConfirm.addActionListener(e -> { confirmed[0] = true; dlg.dispose(); });
 
-        // Enable button only when checkbox is ticked
         chkConfirm.addActionListener(e -> {
             boolean ticked = chkConfirm.isSelected();
             btnConfirm.setEnabled(ticked);
@@ -1264,9 +1273,10 @@ public class POSPanel extends JPanel {
 
         JButton btnCancel = new JButton("Hủy");
         btnCancel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btnCancel.setPreferredSize(new Dimension(100, 40));
+        btnCancel.setPreferredSize(new Dimension(80, 40));
         btnCancel.addActionListener(e -> dlg.dispose());
 
+        btnPanel.add(btnPrintQR);
         btnPanel.add(btnConfirm);
         btnPanel.add(btnCancel);
         bottomPanel.add(btnPanel);
@@ -1307,8 +1317,83 @@ public class POSPanel extends JPanel {
             }
         }.execute();
 
-        dlg.setVisible(true); // blocks until closed
+        dlg.setVisible(true);
         return confirmed[0];
+    }
+
+    private void exportQrPdf(String qrUrl, BigDecimal amount, String accountName, String accountNo) {
+        javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
+        fc.setDialogTitle("Lưu mã QR thanh toán");
+        fc.setSelectedFile(new java.io.File("QR_ThanhToan_" + amount.longValue() + ".pdf"));
+        fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF Files", "pdf"));
+
+        int result = fc.showSaveDialog(this);
+        if (result != javax.swing.JFileChooser.APPROVE_OPTION) return;
+
+        String path = fc.getSelectedFile().getAbsolutePath();
+        if (!path.toLowerCase().endsWith(".pdf")) path += ".pdf";
+
+        try {
+            // Download QR image
+            java.awt.image.BufferedImage qrImg = javax.imageio.ImageIO.read(new java.net.URL(qrUrl));
+
+            // Create PDF (A5)
+            com.lowagie.text.Document doc = new com.lowagie.text.Document(com.lowagie.text.PageSize.A5);
+            com.lowagie.text.pdf.PdfWriter.getInstance(doc, new java.io.FileOutputStream(path));
+            doc.open();
+
+            com.lowagie.text.Font titleFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 18, com.lowagie.text.Font.BOLD);
+            com.lowagie.text.Font normalFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 12);
+            com.lowagie.text.Font amountFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 16, com.lowagie.text.Font.BOLD, java.awt.Color.RED);
+
+            // Store name
+            com.lowagie.text.Paragraph pTitle = new com.lowagie.text.Paragraph("APOTHECARY PRO", titleFont);
+            pTitle.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            doc.add(pTitle);
+
+            doc.add(new com.lowagie.text.Paragraph("Quet ma QR de thanh toan", normalFont));
+            doc.add(new com.lowagie.text.Paragraph(" "));
+
+            // Bank info
+            doc.add(new com.lowagie.text.Paragraph("Ngan hang: Techcombank", normalFont));
+            doc.add(new com.lowagie.text.Paragraph("Chu TK: " + accountName, normalFont));
+            doc.add(new com.lowagie.text.Paragraph("STK: " + accountNo, normalFont));
+
+            com.lowagie.text.Paragraph pAmount = new com.lowagie.text.Paragraph(
+                    "So tien: " + MONEY_FMT.format(amount) + " VND", amountFont);
+            pAmount.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            pAmount.setSpacingBefore(10);
+            doc.add(pAmount);
+            doc.add(new com.lowagie.text.Paragraph(" "));
+
+            // QR Image
+            if (qrImg != null) {
+                com.lowagie.text.Image img = com.lowagie.text.Image.getInstance(qrImg, null);
+                img.scaleToFit(250, 250);
+                img.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                doc.add(img);
+            }
+
+            doc.add(new com.lowagie.text.Paragraph(" "));
+            com.lowagie.text.Paragraph pNote = new com.lowagie.text.Paragraph(
+                    "So tien se tu dong dien khi quet ma QR", normalFont);
+            pNote.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            doc.add(pNote);
+
+            doc.close();
+
+            JOptionPane.showMessageDialog(this,
+                    "Xuất QR PDF thành công!\n" + path,
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            try { java.awt.Desktop.getDesktop().open(new java.io.File(path)); }
+            catch (Exception ignored) {}
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this,
+                    "Lỗi xuất QR PDF: " + e.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private String mapPayMethod(String display) {

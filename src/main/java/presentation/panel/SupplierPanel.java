@@ -133,7 +133,7 @@ public class SupplierPanel extends JPanel {
 
         // === CENTER: JSplitPane ===
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setDividerLocation(280);
+        splitPane.setDividerLocation(340);
         splitPane.setDividerSize(1);
         splitPane.setBorder(null);
 

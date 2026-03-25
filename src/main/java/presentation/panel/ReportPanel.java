@@ -12,6 +12,8 @@ import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
@@ -332,7 +334,9 @@ public class ReportPanel extends JPanel {
         try (PreparedStatement ps = conn.prepareStatement(sql1);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                lblRevenueToday.setText(MONEY_FMT.format(rs.getDouble(1)) + " VNĐ");
+                BigDecimal val = rs.getBigDecimal(1);
+                if (val == null) val = BigDecimal.ZERO;
+                lblRevenueToday.setText(MONEY_FMT.format(val) + " VNĐ");
             }
         }
 
@@ -341,7 +345,9 @@ public class ReportPanel extends JPanel {
         try (PreparedStatement ps = conn.prepareStatement(sql2);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                lblRevenueMonth.setText(MONEY_FMT.format(rs.getDouble(1)) + " VNĐ");
+                BigDecimal val = rs.getBigDecimal(1);
+                if (val == null) val = BigDecimal.ZERO;
+                lblRevenueMonth.setText(MONEY_FMT.format(val) + " VNĐ");
             }
         }
 
@@ -382,12 +388,14 @@ public class ReportPanel extends JPanel {
              ResultSet rs = ps.executeQuery()) {
             int stt = 1;
             while (rs.next()) {
+                BigDecimal dt = rs.getBigDecimal("DoanhThu");
+                if (dt == null) dt = BigDecimal.ZERO;
                 topProductsModel.addRow(new Object[]{
                         stt++,
                         rs.getNString("TenSP"),
                         rs.getNString("DonViTinh"),
                         String.format("%,d", rs.getInt("TongBan")),
-                        MONEY_FMT.format(rs.getDouble("DoanhThu")) + " VNĐ"
+                        MONEY_FMT.format(dt) + " VNĐ"
                 });
             }
         }
@@ -454,8 +462,11 @@ public class ReportPanel extends JPanel {
             while (rs.next()) {
                 java.sql.Date ngay = rs.getDate("Ngay");
                 int soHD = rs.getInt("SoHD");
-                double doanhThu = rs.getDouble("DoanhThu");
-                double tbHD = soHD > 0 ? doanhThu / soHD : 0;
+                BigDecimal doanhThu = rs.getBigDecimal("DoanhThu");
+                if (doanhThu == null) doanhThu = BigDecimal.ZERO;
+                BigDecimal tbHD = soHD > 0
+                        ? doanhThu.divide(BigDecimal.valueOf(soHD), 0, RoundingMode.HALF_UP)
+                        : BigDecimal.ZERO;
 
                 revenueModel.addRow(new Object[]{
                         ngay.toLocalDate().format(DATE_FMT),

@@ -10,6 +10,7 @@ import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -125,8 +126,8 @@ public class SupplierDetailDialog extends JDialog {
                     if (ts != null) {
                         ngayNhap = ts.toLocalDateTime();
                     }
-                    double tongTien = rs.getBigDecimal("TongTien") != null
-                            ? rs.getBigDecimal("TongTien").doubleValue() : 0;
+                    BigDecimal tongTien = rs.getBigDecimal("TongTien");
+                    if (tongTien == null) tongTien = BigDecimal.ZERO;
                     ticketData.add(new Object[]{
                             rs.getInt("MaPN"),
                             "PN-" + rs.getInt("MaPN"),
@@ -162,8 +163,8 @@ public class SupplierDetailDialog extends JDialog {
                     if (hsdDate != null) {
                         hsd = hsdDate.toLocalDate();
                     }
-                    double giaNhap = rs.getBigDecimal("GiaNhap") != null
-                            ? rs.getBigDecimal("GiaNhap").doubleValue() : 0;
+                    BigDecimal giaNhap = rs.getBigDecimal("GiaNhap");
+                    if (giaNhap == null) giaNhap = BigDecimal.ZERO;
                     batchData.add(new Object[]{
                             rs.getNString("SoLo"),
                             rs.getNString("TenSP"),
@@ -322,7 +323,7 @@ public class SupplierDetailDialog extends JDialog {
                         row[1],
                         ngayNhapStr,
                         row[3],
-                        String.format("%,.0f", (double) row[4]),
+                        new java.text.DecimalFormat("#,##0").format(row[4]),
                         row[5]
                 });
             }
@@ -426,7 +427,7 @@ public class SupplierDetailDialog extends JDialog {
                         row[1],
                         row[2],
                         row[3],
-                        String.format("%,.0f", (double) row[4]),
+                        new java.text.DecimalFormat("#,##0").format(row[4]),
                         hsdStr,
                         row[6]
                 });
@@ -446,30 +447,29 @@ public class SupplierDetailDialog extends JDialog {
      * @param asc  ascending or descending
      * @param isTicket  true = ticket data layout, false = batch data layout
      */
-    @SuppressWarnings("unchecked")
     private Comparator<Object[]> buildComparator(int col, boolean asc, boolean isTicket) {
         // Map table col → data array index
         int dataIdx;
         if (isTicket) {
             // Table: STT(0), MaPN(1), NgayNhap(2), NguoiNhap(3), TongTien(4), GhiChu(5)
-            // Data:  [MaPN(0-int), MaPNStr(1), NgayNhap(2), NguoiNhap(3), TongTien(4-double), GhiChu(5)]
+            // Data:  [MaPN(0-int), MaPNStr(1), NgayNhap(2), NguoiNhap(3), TongTien(4-BigDecimal), GhiChu(5)]
             switch (col) {
                 case 1: dataIdx = 0; break; // MaPN (int)
                 case 2: dataIdx = 2; break; // NgayNhap (string)
                 case 3: dataIdx = 3; break; // NguoiNhap (string)
-                case 4: dataIdx = 4; break; // TongTien (double)
+                case 4: dataIdx = 4; break; // TongTien (BigDecimal)
                 case 5: dataIdx = 5; break; // GhiChu (string)
                 default: dataIdx = 0;
             }
         } else {
             // Table: STT(0), SoLo(1), TenSP(2), DVT(3), SLNhap(4), GiaNhap(5), HSD(6), MaPN(7)
-            // Data:  [SoLo(0), TenSP(1), DVT(2), SoLuong(3-int), GiaNhap(4-double), HSD(5), MaPNStr(6)]
+            // Data:  [SoLo(0), TenSP(1), DVT(2), SoLuong(3-int), GiaNhap(4-BigDecimal), HSD(5), MaPNStr(6)]
             switch (col) {
                 case 1: dataIdx = 0; break; // SoLo (string)
                 case 2: dataIdx = 1; break; // TenSP (string)
                 case 3: dataIdx = 2; break; // DVT (string)
                 case 4: dataIdx = 3; break; // SoLuong (int)
-                case 5: dataIdx = 4; break; // GiaNhap (double)
+                case 5: dataIdx = 4; break; // GiaNhap (BigDecimal)
                 case 6: dataIdx = 5; break; // HSD (string)
                 case 7: dataIdx = 6; break; // MaPN (string)
                 default: dataIdx = 0;
@@ -484,7 +484,7 @@ public class SupplierDetailDialog extends JDialog {
             if (va == null) return -1;
             if (vb == null) return 1;
             if (va instanceof Integer) return Integer.compare((int) va, (int) vb);
-            if (va instanceof Double) return Double.compare((double) va, (double) vb);
+            if (va instanceof BigDecimal) return ((BigDecimal) va).compareTo((BigDecimal) vb);
             if (va instanceof LocalDate) return ((LocalDate) va).compareTo((LocalDate) vb);
             if (va instanceof LocalDateTime) return ((LocalDateTime) va).compareTo((LocalDateTime) vb);
             return va.toString().compareToIgnoreCase(vb.toString());

@@ -116,26 +116,43 @@ public class CustomerPanel extends JPanel {
         topBar.add(filterPanel, BorderLayout.EAST);
         add(topBar, BorderLayout.NORTH);
 
-        // === SPLIT: Form left + Table right ===
+        // === TABBED PANE ===
+        JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabbedPane.setBackground(Color.WHITE);
+
+        // Tab 1: Khách đã đăng ký (main)
+        JPanel mainTab = new JPanel(new BorderLayout());
+
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        splitPane.setDividerLocation(320);
-        splitPane.setDividerSize(4);
+        splitPane.setDividerLocation(340);
+        splitPane.setDividerSize(1);
         splitPane.setBorder(null);
 
         splitPane.setLeftComponent(createFormPanel());
         splitPane.setRightComponent(createTablePanel());
 
-        // NV: ẩn form, chỉ coi danh sách
         if (!Session.isAdmin()) {
             splitPane.setLeftComponent(null);
             splitPane.setDividerSize(0);
             splitPane.setDividerLocation(0);
         }
 
-        add(splitPane, BorderLayout.CENTER);
+        mainTab.add(splitPane, BorderLayout.CENTER);
+        mainTab.add(createPaginationPanel(), BorderLayout.SOUTH);
 
-        // === BOTTOM: Pagination ===
-        add(createPaginationPanel(), BorderLayout.SOUTH);
+        tabbedPane.addTab("Khách đã đăng ký", mainTab);
+
+        // Tab 2: Khách vãng lai (invoices without customer)
+        tabbedPane.addTab("Khách vãng lai", createWalkInTab());
+
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getSelectedIndex() == 1) {
+                loadWalkInInvoices();
+            }
+        });
+
+        add(tabbedPane, BorderLayout.CENTER);
     }
 
     // ================================================================
@@ -145,18 +162,18 @@ public class CustomerPanel extends JPanel {
     private JPanel createFormPanel() {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setBackground(Color.WHITE);
-        wrapper.setBorder(new EmptyBorder(16, 24, 16, 12));
+        wrapper.setBorder(new EmptyBorder(20, 24, 20, 24));
 
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
         formPanel.setBackground(Color.WHITE);
 
         JLabel lblForm = new JLabel("Thông Tin Khách Hàng");
-        lblForm.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblForm.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblForm.setForeground(AppColors.PRIMARY);
         lblForm.setAlignmentX(LEFT_ALIGNMENT);
         formPanel.add(lblForm);
-        formPanel.add(Box.createRigidArea(new Dimension(0, 14)));
+        formPanel.add(Box.createRigidArea(new Dimension(0, 16)));
 
         // Mã KH (readonly)
         txtMaKH = new JTextField();
@@ -231,8 +248,11 @@ public class CustomerPanel extends JPanel {
 
         formPanel.add(Box.createVerticalGlue());
 
-        wrapper.add(new JScrollPane(formPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER), BorderLayout.CENTER);
+        JScrollPane formScroll = new JScrollPane(formPanel,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        formScroll.setBorder(BorderFactory.createEmptyBorder());
+        wrapper.add(formScroll, BorderLayout.CENTER);
         return wrapper;
     }
 
@@ -378,34 +398,61 @@ public class CustomerPanel extends JPanel {
     // ================================================================
 
     private JPanel createPaginationPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 8));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 8));
+        bar.setBackground(Color.WHITE);
+        bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
 
-        btnFirst = createPageButton("«");
-        btnPrev = createPageButton("‹");
+        btnFirst = createPageNavButton("|< Đầu");
+        btnPrev  = createPageNavButton("< Trước");
         pageNumbersPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
         pageNumbersPanel.setOpaque(false);
-        btnNext = createPageButton("›");
-        btnLast = createPageButton("»");
+        btnNext  = createPageNavButton("Sau >");
+        btnLast  = createPageNavButton("Cuối >|");
+
         lblPageInfo = new JLabel();
-        lblPageInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblPageInfo.setForeground(AppColors.TEXT_SECONDARY);
+        lblPageInfo.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblPageInfo.setForeground(AppColors.TEXT_PRIMARY);
 
         btnFirst.addActionListener(e -> loadPage(1));
         btnPrev.addActionListener(e -> { if (currentPage > 1) loadPage(currentPage - 1); });
         btnNext.addActionListener(e -> { if (currentPage < totalPages) loadPage(currentPage + 1); });
         btnLast.addActionListener(e -> loadPage(totalPages));
 
-        panel.add(btnFirst);
-        panel.add(btnPrev);
-        panel.add(pageNumbersPanel);
-        panel.add(btnNext);
-        panel.add(btnLast);
-        panel.add(Box.createRigidArea(new Dimension(16, 0)));
-        panel.add(lblPageInfo);
+        bar.add(btnFirst);
+        bar.add(btnPrev);
+        bar.add(Box.createHorizontalStrut(8));
+        bar.add(pageNumbersPanel);
+        bar.add(Box.createHorizontalStrut(8));
+        bar.add(btnNext);
+        bar.add(btnLast);
+        bar.add(Box.createHorizontalStrut(16));
+        bar.add(lblPageInfo);
 
-        return panel;
+        return bar;
+    }
+
+    private JButton createPageNavButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setPreferredSize(new Dimension(70, 28));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(AppColors.PRIMARY);
+        btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
+        return btn;
+    }
+
+    private JButton createPageNumButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setPreferredSize(new Dimension(32, 28));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(AppColors.PRIMARY);
+        btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
+        return btn;
     }
 
     // ================================================================
@@ -456,25 +503,16 @@ public class CustomerPanel extends JPanel {
         btnPrev.setEnabled(currentPage > 1);
         btnNext.setEnabled(currentPage < totalPages);
         btnLast.setEnabled(currentPage < totalPages);
-        lblPageInfo.setText(String.format("Trang %d / %d", currentPage, totalPages));
 
         pageNumbersPanel.removeAll();
         int start = Math.max(1, currentPage - 2);
         int end = Math.min(totalPages, currentPage + 2);
         for (int i = start; i <= end; i++) {
-            JButton btn = new JButton(String.valueOf(i));
-            btn.setFont(new Font("Segoe UI", i == currentPage ? Font.BOLD : Font.PLAIN, 12));
-            btn.setFocusPainted(false);
-            btn.setBorderPainted(false);
-            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            btn.setPreferredSize(new Dimension(32, 28));
-            btn.setMargin(new Insets(0, 0, 0, 0));
+            JButton btn = createPageNumButton(String.valueOf(i));
             if (i == currentPage) {
                 btn.setBackground(AppColors.PRIMARY);
                 btn.setForeground(Color.WHITE);
-            } else {
-                btn.setBackground(AppColors.NEUTRAL);
-                btn.setForeground(AppColors.TEXT_PRIMARY);
+                btn.setBorder(BorderFactory.createLineBorder(AppColors.PRIMARY, 1));
             }
             int pg = i;
             btn.addActionListener(e -> loadPage(pg));
@@ -482,6 +520,8 @@ public class CustomerPanel extends JPanel {
         }
         pageNumbersPanel.revalidate();
         pageNumbersPanel.repaint();
+
+        lblPageInfo.setText("Trang " + currentPage + " / " + totalPages);
     }
 
     // ================================================================
@@ -497,6 +537,139 @@ public class CustomerPanel extends JPanel {
         });
         searchTimer.setRepeats(false);
         searchTimer.start();
+    }
+
+    // ================================================================
+    //  WALK-IN CUSTOMER TAB (Khách vãng lai)
+    // ================================================================
+
+    private DefaultTableModel walkInModel;
+    private JTable walkInTable;
+    private JLabel lblWalkInInfo;
+
+    private JPanel createWalkInTab() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+
+        // Header
+        JPanel hdr = new JPanel(new BorderLayout());
+        hdr.setBackground(Color.WHITE);
+        hdr.setBorder(new EmptyBorder(12, 20, 8, 20));
+
+        JLabel lblTitle2 = new JLabel("Danh sách hóa đơn khách vãng lai (không có SĐT/tên)");
+        lblTitle2.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblTitle2.setForeground(AppColors.TEXT_SECONDARY);
+        hdr.add(lblTitle2, BorderLayout.WEST);
+
+        lblWalkInInfo = new JLabel("");
+        lblWalkInInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblWalkInInfo.setForeground(AppColors.TEXT_SECONDARY);
+        hdr.add(lblWalkInInfo, BorderLayout.EAST);
+
+        panel.add(hdr, BorderLayout.NORTH);
+
+        // Table
+        String[] cols = {"STT", "Mã HĐ", "Ngày bán", "Nhân viên", "Phương thức TT", "Tổng tiền", "Trạng thái"};
+        walkInModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        walkInTable = new JTable(walkInModel);
+        walkInTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        walkInTable.setRowHeight(34);
+        walkInTable.setShowGrid(false);
+        walkInTable.setFillsViewportHeight(true);
+        walkInTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        walkInTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        walkInTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+        walkInTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+        walkInTable.getTableHeader().setPreferredSize(new Dimension(0, 36));
+
+        walkInTable.getColumnModel().getColumn(0).setMaxWidth(50);
+        walkInTable.getColumnModel().getColumn(1).setMaxWidth(70);
+
+        walkInTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v,
+                    boolean sel, boolean foc, int r, int c) {
+                Object dv = (c == 0) ? (r + 1) : v;
+                Component comp = super.getTableCellRendererComponent(t, dv, sel, foc, r, c);
+                if (!sel) {
+                    comp.setBackground(r % 2 == 0 ? Color.WHITE : AppColors.TABLE_ROW_ALT);
+                    comp.setForeground(AppColors.TEXT_PRIMARY);
+                }
+                setFont(new Font("Segoe UI", Font.PLAIN, 12));
+                if (c == 5) {
+                    comp.setForeground(sel ? Color.WHITE : AppColors.SUCCESS);
+                    setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    setHorizontalAlignment(SwingConstants.RIGHT);
+                } else if (c == 6) {
+                    setHorizontalAlignment(SwingConstants.CENTER);
+                    String val = dv != null ? dv.toString() : "";
+                    if (val.contains("hủy") || val.contains("Hủy")) {
+                        comp.setForeground(sel ? Color.WHITE : AppColors.DANGER);
+                    } else {
+                        comp.setForeground(sel ? Color.WHITE : AppColors.SUCCESS);
+                    }
+                    setFont(new Font("Segoe UI", Font.BOLD, 12));
+                } else if (c == 0 || c == 1) {
+                    setHorizontalAlignment(SwingConstants.CENTER);
+                } else {
+                    setHorizontalAlignment(SwingConstants.LEFT);
+                }
+                return comp;
+            }
+        });
+
+        JScrollPane sp = new JScrollPane(walkInTable);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getViewport().setBackground(Color.WHITE);
+        panel.add(sp, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private void loadWalkInInvoices() {
+        if (walkInModel == null) return;
+        walkInModel.setRowCount(0);
+
+        String sql = "SELECT hd.MaHD, hd.NgayBan, nd.HoTen AS TenNV, " +
+                "hd.PhuongThucTT, hd.TongTien, hd.TrangThai " +
+                "FROM HoaDon hd " +
+                "JOIN NguoiDung nd ON hd.MaND = nd.MaND " +
+                "WHERE hd.MaKH IS NULL " +
+                "ORDER BY hd.NgayBan DESC";
+
+        try (java.sql.Connection conn = DatabaseHelper.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+
+            int stt = 0;
+            java.math.BigDecimal totalRevenue = java.math.BigDecimal.ZERO;
+            while (rs.next()) {
+                stt++;
+                java.sql.Timestamp ts = rs.getTimestamp("NgayBan");
+                String ngay = ts != null ? ts.toLocalDateTime().format(DT_FMT) : "---";
+                java.math.BigDecimal tien = rs.getBigDecimal("TongTien");
+                String tienStr = tien != null ? String.format("%,.0f VNĐ", tien) : "0";
+                if (tien != null) totalRevenue = totalRevenue.add(tien);
+
+                String tt = rs.getNString("TrangThai");
+                String displayTT = "Thành công";
+                if (tt != null && tt.contains("huy")) displayTT = "Đã hủy";
+
+                walkInModel.addRow(new Object[]{
+                    stt, rs.getInt("MaHD"), ngay,
+                    rs.getNString("TenNV"), rs.getNString("PhuongThucTT"),
+                    tienStr, displayTT
+                });
+            }
+
+            lblWalkInInfo.setText("Tổng: " + stt + " hóa đơn — " +
+                    MONEY_FMT.format(totalRevenue) + " VNĐ");
+
+        } catch (java.sql.SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     // ================================================================
@@ -798,19 +971,23 @@ public class CustomerPanel extends JPanel {
         lbl.setForeground(label.contains("*") ? AppColors.TEXT_PRIMARY : AppColors.TEXT_SECONDARY);
         lbl.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(lbl);
-        panel.add(Box.createRigidArea(new Dimension(0, 3)));
+        panel.add(Box.createRigidArea(new Dimension(0, 4)));
 
         if (field instanceof JTextField) {
             JTextField tf = (JTextField) field;
             tf.setFont(new Font("Segoe UI", Font.PLAIN, 13));
             tf.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(AppColors.NEUTRAL_DARK, 1),
-                    new EmptyBorder(6, 10, 6, 10)));
+                    BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1),
+                    new EmptyBorder(0, 10, 0, 10)));
         }
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, field.getPreferredSize().height));
+        if (field instanceof JComboBox) {
+            field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        }
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        field.setPreferredSize(new Dimension(0, 34));
         field.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(field);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+        panel.add(Box.createRigidArea(new Dimension(0, 12)));
     }
 
     private JButton createActionButton(String text, Color bg) {
@@ -822,19 +999,6 @@ public class CustomerPanel extends JPanel {
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setPreferredSize(new Dimension(0, 36));
-        return btn;
-    }
-
-    private JButton createPageButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setBackground(AppColors.NEUTRAL);
-        btn.setForeground(AppColors.PRIMARY);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(36, 30));
-        btn.setMargin(new Insets(0, 0, 0, 0));
         return btn;
     }
 }

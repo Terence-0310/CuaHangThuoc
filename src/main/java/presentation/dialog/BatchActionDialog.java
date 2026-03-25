@@ -14,6 +14,8 @@ import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.text.DecimalFormat;
 
@@ -46,7 +48,7 @@ public class BatchActionDialog extends JDialog {
     private final long giaNhapLo;
     private final int soLuongGoc;
     private final String tenNCC;
-    private final double donGia1SP;
+    private final BigDecimal donGia1SP;
 
     // === Form ===
     private JTextField txtSoLuong;
@@ -73,7 +75,8 @@ public class BatchActionDialog extends JDialog {
         this.soLuongGoc = soLuongGoc > 0 ? soLuongGoc : 1;
         this.tenNCC = (tenNCC == null || tenNCC.isEmpty() || "---".equals(tenNCC))
                 ? "Không xác định" : tenNCC;
-        this.donGia1SP = (double) giaNhapLo / this.soLuongGoc;
+        this.donGia1SP = BigDecimal.valueOf(giaNhapLo)
+                .divide(BigDecimal.valueOf(this.soLuongGoc), 0, RoundingMode.HALF_UP);
 
         initComponents();
         setSize(500, type == ActionType.RETURN ? 660 : 600);
@@ -123,7 +126,7 @@ public class BatchActionDialog extends JDialog {
         }
         addInfoRow(form, "Giá nhập cả lô:", MONEY_FMT.format(giaNhapLo) + " VNĐ");
         addInfoRow(form, "SL gốc khi nhập:", String.format("%,d", soLuongGoc));
-        addInfoRow(form, "Đơn giá 1 SP:", MONEY_FMT.format(Math.round(donGia1SP)) + " VNĐ");
+        addInfoRow(form, "Đơn giá 1 SP:", MONEY_FMT.format(donGia1SP) + " VNĐ");
 
         addSeparator(form);
 
@@ -323,7 +326,7 @@ public class BatchActionDialog extends JDialog {
             }
             if (sl > tonKho) {
                 // ★ VƯỢT TỒN KHO → lỗi đỏ + disable
-                long thanhTien = Math.round(donGia1SP * sl);
+                BigDecimal thanhTien = donGia1SP.multiply(BigDecimal.valueOf(sl));
                 txtThanhTien.setText(MONEY_FMT.format(thanhTien) + " VNĐ");
                 lblError.setText("Vượt tồn kho! Tối đa: " + String.format("%,d", tonKho));
                 btnConfirm.setEnabled(false);
@@ -331,7 +334,7 @@ public class BatchActionDialog extends JDialog {
             }
 
             // OK
-            long thanhTien = Math.round(donGia1SP * sl);
+            BigDecimal thanhTien = donGia1SP.multiply(BigDecimal.valueOf(sl));
             txtThanhTien.setText(MONEY_FMT.format(thanhTien) + " VNĐ");
             lblError.setText("Tối đa: " + String.format("%,d", tonKho));
             lblError.setForeground(AppColors.TEXT_SECONDARY);
@@ -482,7 +485,7 @@ public class BatchActionDialog extends JDialog {
         if (ghiChu.length() < 5) { warn("Ghi chú phải >= 5 ký tự!"); return; }
 
         String option = (String) cboOption.getSelectedItem();
-        long tongTien = Math.round(donGia1SP * soLuong);
+        BigDecimal tongTien = donGia1SP.multiply(BigDecimal.valueOf(soLuong));
 
         // Tình trạng hàng (RETURN)
         String tinhTrang = isReturn && cboTinhTrang != null
@@ -493,7 +496,7 @@ public class BatchActionDialog extends JDialog {
                 "Sản phẩm: " + tenSP + "\n" +
                 "Số lô: " + soLo + "\n" +
                 "Số lượng: " + String.format("%,d", soLuong) + "\n" +
-                "Đơn giá 1 SP: " + MONEY_FMT.format(Math.round(donGia1SP)) + " VNĐ\n" +
+                "Đơn giá 1 SP: " + MONEY_FMT.format(donGia1SP) + " VNĐ\n" +
                 (isReturn
                     ? "Tiền hoàn: " + MONEY_FMT.format(tongTien) + " VNĐ\n" +
                       "Hình thức: " + option + "\n" +
@@ -508,7 +511,7 @@ public class BatchActionDialog extends JDialog {
         if (confirmRes != JOptionPane.YES_OPTION) return;
 
         try {
-            executeTransaction(soLuong, tongTien, option, ghiChu, tinhTrang);
+            executeTransaction(soLuong, tongTien.longValue(), option, ghiChu, tinhTrang);
             confirmed = true;
             JOptionPane.showMessageDialog(this,
                     (isReturn ? "Trả hàng" : "Hủy hàng") + " thành công!\n" +
@@ -523,8 +526,8 @@ public class BatchActionDialog extends JDialog {
             pd.tenSP = tenSP;
             pd.soLo = soLo;
             pd.soLuong = soLuong;
-            pd.donGia = Math.round(donGia1SP);
-            pd.tongTien = tongTien;
+            pd.donGia = donGia1SP.longValue();
+            pd.tongTien = tongTien.longValue();
             pd.lyDo = ghiChu;
             pd.nguoiThucHien = Session.getCurrentUser().getHoTen();
             pd.tenNCC = tenNCC;

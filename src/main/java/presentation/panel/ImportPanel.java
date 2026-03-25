@@ -586,30 +586,6 @@ public class ImportPanel extends JPanel implements IImportView {
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
     }
 
-    private JPanel createLabeledField(String label, JTextField field) {
-        JPanel p = new JPanel();
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setOpaque(false);
-
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lbl.setForeground(AppColors.TEXT_SECONDARY);
-        lbl.setAlignmentX(LEFT_ALIGNMENT);
-        p.add(lbl);
-        p.add(Box.createRigidArea(new Dimension(0, 3)));
-
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-        field.setPreferredSize(new Dimension(0, 34));
-        field.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(AppColors.NEUTRAL_DARKER, 1),
-                new EmptyBorder(0, 10, 0, 10)
-        ));
-        field.setAlignmentX(LEFT_ALIGNMENT);
-        p.add(field);
-
-        return p;
-    }
 
     private void addNumericFilter(JTextField field) {
         field.addKeyListener(new KeyAdapter() {

@@ -35,6 +35,9 @@ public class InvoicePanel extends JPanel {
     private static final int PAGE_SIZE = 15;
     private JLabel lblPageInfo;
 
+    // Customer filter: 0 = all, 1 = registered, 2 = walk-in
+    private int customerTypeFilter = 0;
+
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -42,19 +45,77 @@ public class InvoicePanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(AppColors.NEUTRAL);
 
-        add(createTopBar(), BorderLayout.NORTH);
+        // Top: title + filters + tab buttons
+        JPanel northPanel = new JPanel();
+        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+        northPanel.setBackground(Color.WHITE);
+        northPanel.add(createTopBar());
+        northPanel.add(createFilterTabs());
+        add(northPanel, BorderLayout.NORTH);
+
         add(createTablePanel(), BorderLayout.CENTER);
         add(createPaginationPanel(), BorderLayout.SOUTH);
 
         SwingUtilities.invokeLater(() -> loadInvoices());
 
-        // Auto-refresh khi chuyển tab về panel này
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 loadInvoices();
             }
         });
+    }
+
+    private JPanel createFilterTabs() {
+        JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        tabPanel.setBackground(Color.WHITE);
+        tabPanel.setBorder(new EmptyBorder(0, 24, 8, 24));
+
+        String[] displayLabels = {"Tất cả", "Khách đã đăng ký", "Khách vãng lai"};
+        JLabel[] tabLabels = new JLabel[displayLabels.length];
+
+        for (int i = 0; i < displayLabels.length; i++) {
+            JLabel lbl = new JLabel(displayLabels[i], SwingConstants.CENTER);
+            lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lbl.setOpaque(true);
+            lbl.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            lbl.setPreferredSize(new Dimension(lbl.getPreferredSize().width + 32, 32));
+
+            tabLabels[i] = lbl;
+            int idx = i;
+
+            lbl.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    customerTypeFilter = idx;
+                    currentPage = 1;
+                    styleFilterTabs(tabLabels, idx);
+                    loadInvoices();
+                }
+            });
+            tabPanel.add(lbl);
+        }
+
+        styleFilterTabs(tabLabels, 0);
+        return tabPanel;
+    }
+
+    private void styleFilterTabs(JLabel[] tabs, int activeIdx) {
+        for (int i = 0; i < tabs.length; i++) {
+            if (i == activeIdx) {
+                tabs[i].setBackground(AppColors.PRIMARY);
+                tabs[i].setForeground(Color.WHITE);
+                tabs[i].setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 3, 0, AppColors.PRIMARY),
+                        new EmptyBorder(6, 16, 3, 16)));
+            } else {
+                tabs[i].setBackground(new Color(0xF0, 0xF0, 0xF0));
+                tabs[i].setForeground(new Color(0x33, 0x33, 0x33));
+                tabs[i].setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppColors.NEUTRAL_DARK),
+                        new EmptyBorder(6, 16, 5, 16)));
+            }
+        }
     }
 
     // ================================================================
@@ -255,34 +316,63 @@ public class InvoicePanel extends JPanel {
     // ================================================================
     //  PAGINATION
     // ================================================================
-    private JPanel createPaginationPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 6));
-        panel.setBackground(Color.WHITE);
-        panel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
+    private JPanel pageNumbersPanel;
 
-        JButton btnFirst = makePgBtn("Đầu");
-        JButton btnPrev = makePgBtn("< Trước");
-        lblPageInfo = new JLabel("Trang 1 / 1");
-        lblPageInfo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        JButton btnNext = makePgBtn("Sau >");
-        JButton btnLast = makePgBtn("Cuối");
+    private JPanel createPaginationPanel() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 8));
+        bar.setBackground(Color.WHITE);
+        bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
+
+        JButton btnFirst = createPageNavButton("|< Đầu");
+        JButton btnPrev  = createPageNavButton("< Trước");
+        pageNumbersPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
+        pageNumbersPanel.setOpaque(false);
+        JButton btnNext  = createPageNavButton("Sau >");
+        JButton btnLast  = createPageNavButton("Cuối >|");
+
+        lblPageInfo = new JLabel();
+        lblPageInfo.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblPageInfo.setForeground(AppColors.TEXT_PRIMARY);
 
         btnFirst.addActionListener(e -> { currentPage = 1; loadInvoices(); });
         btnPrev.addActionListener(e -> { if (currentPage > 1) { currentPage--; loadInvoices(); } });
         btnNext.addActionListener(e -> { if (currentPage < totalPages) { currentPage++; loadInvoices(); } });
         btnLast.addActionListener(e -> { currentPage = totalPages; loadInvoices(); });
 
-        panel.add(btnFirst); panel.add(btnPrev);
-        panel.add(lblPageInfo);
-        panel.add(btnNext); panel.add(btnLast);
-        return panel;
+        bar.add(btnFirst);
+        bar.add(btnPrev);
+        bar.add(Box.createHorizontalStrut(8));
+        bar.add(pageNumbersPanel);
+        bar.add(Box.createHorizontalStrut(8));
+        bar.add(btnNext);
+        bar.add(btnLast);
+        bar.add(Box.createHorizontalStrut(16));
+        bar.add(lblPageInfo);
+
+        return bar;
     }
 
-    private JButton makePgBtn(String text) {
+    private JButton createPageNavButton(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setPreferredSize(new Dimension(70, 28));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(AppColors.PRIMARY);
+        btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
+        return btn;
+    }
+
+    private JButton createPageNumButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setPreferredSize(new Dimension(32, 28));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBackground(Color.WHITE);
+        btn.setForeground(AppColors.PRIMARY);
+        btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
         return btn;
     }
 
@@ -336,6 +426,13 @@ public class InvoicePanel extends JPanel {
             where.append("AND hd.TrangThai = N'Thanh cong' ");
         } else if (statusIdx == 2) {
             where.append("AND hd.TrangThai = N'Da huy' ");
+        }
+
+        // Customer type filter (from tabs)
+        if (customerTypeFilter == 1) {
+            where.append("AND hd.MaKH IS NOT NULL ");
+        } else if (customerTypeFilter == 2) {
+            where.append("AND hd.MaKH IS NULL ");
         }
 
         String baseQuery =
@@ -419,6 +516,23 @@ public class InvoicePanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Lỗi tải hóa đơn: " + e.getMessage(),
                     "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
+        // Update pagination page numbers
+        pageNumbersPanel.removeAll();
+        int start = Math.max(1, currentPage - 2);
+        int end = Math.min(totalPages, currentPage + 2);
+        for (int p = start; p <= end; p++) {
+            JButton pBtn = createPageNumButton(String.valueOf(p));
+            if (p == currentPage) {
+                pBtn.setBackground(AppColors.PRIMARY);
+                pBtn.setForeground(Color.WHITE);
+                pBtn.setBorder(BorderFactory.createLineBorder(AppColors.PRIMARY, 1));
+            }
+            int pg = p;
+            pBtn.addActionListener(ev -> { currentPage = pg; loadInvoices(); });
+            pageNumbersPanel.add(pBtn);
+        }
+        pageNumbersPanel.revalidate();
+        pageNumbersPanel.repaint();
 
         lblPageInfo.setText("Trang " + currentPage + " / " + totalPages);
     }
