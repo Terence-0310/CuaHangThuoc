@@ -37,7 +37,7 @@ public class NhapKhoDAO {
     // ================================================================
 
     public List<Product> getAllActiveProducts() {
-        String sql = "SELECT MaSP, TenSP, DonViTinh, GiaBan, GiaBanSi, TrangThai " +
+        String sql = "SELECT MaSP, TenSP, DonViTinh, GiaBan, TrangThai " +
                      "FROM SanPham WHERE TrangThai = 1 ORDER BY TenSP";
         List<Product> list = new ArrayList<>();
         try (Connection conn = DatabaseHelper.getConnection();
@@ -49,7 +49,7 @@ public class NhapKhoDAO {
                 p.setTenSP(rs.getString("TenSP"));
                 p.setDonViTinh(rs.getString("DonViTinh"));
                 p.setGiaBan(rs.getBigDecimal("GiaBan"));
-                p.setGiaBanSi(rs.getBigDecimal("GiaBanSi"));
+
                 p.setTrangThai(rs.getBoolean("TrangThai"));
                 list.add(p);
             }
@@ -168,7 +168,7 @@ public class NhapKhoDAO {
                     // Đã xử lý SP này trong lượt trước → dùng lại MaSP
                     maSP = resolvedSP.get(spKey);
                     // Vẫn update giá nếu cần
-                    updateProductPrice(conn, maSP, item.getGiaBan(), item.getGiaBanSi());
+                    updateProductPrice(conn, maSP, item.getGiaBan());
                 } else {
                     // Check SP tồn tại trong DB
                     Integer existingMaSP = findProductByNameAndUnit(conn,
@@ -177,11 +177,11 @@ public class NhapKhoDAO {
                     if (existingMaSP != null) {
                         // SP đã có → UPDATE giá bán
                         maSP = existingMaSP;
-                        updateProductPrice(conn, maSP, item.getGiaBan(), item.getGiaBanSi());
+                        updateProductPrice(conn, maSP, item.getGiaBan());
                     } else {
                         // SP mới → INSERT
                         maSP = insertProduct(conn, item.getTenSP(), item.getDonViTinh(),
-                                item.getGiaBan(), item.getGiaBanSi());
+                                item.getGiaBan());
                     }
                     resolvedSP.put(spKey, maSP);
                 }
@@ -240,14 +240,13 @@ public class NhapKhoDAO {
     }
 
     private int insertProduct(Connection conn, String tenSP, String dvt,
-                              BigDecimal giaBan, BigDecimal giaBanSi) throws SQLException {
-        String sql = "INSERT INTO SanPham (TenSP, DonViTinh, GiaBan, GiaBanSi, TrangThai) " +
-                     "VALUES (?, ?, ?, ?, 1)";
+                              BigDecimal giaBan) throws SQLException {
+        String sql = "INSERT INTO SanPham (TenSP, DonViTinh, GiaBan, TrangThai) " +
+                     "VALUES (?, ?, ?, 1)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setNString(1, tenSP.trim());
             ps.setNString(2, dvt.trim());
             ps.setBigDecimal(3, giaBan);
-            ps.setBigDecimal(4, giaBanSi);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) return keys.getInt(1);
@@ -257,12 +256,11 @@ public class NhapKhoDAO {
     }
 
     private void updateProductPrice(Connection conn, int maSP,
-                                    BigDecimal giaBan, BigDecimal giaBanSi) throws SQLException {
-        String sql = "UPDATE SanPham SET GiaBan = ?, GiaBanSi = ? WHERE MaSP = ?";
+                                    BigDecimal giaBan) throws SQLException {
+        String sql = "UPDATE SanPham SET GiaBan = ? WHERE MaSP = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setBigDecimal(1, giaBan);
-            ps.setBigDecimal(2, giaBanSi);
-            ps.setInt(3, maSP);
+            ps.setInt(2, maSP);
             ps.executeUpdate();
         }
     }

@@ -16,8 +16,7 @@ public interface IImportView {
     String getTenSP();
     String getDonViTinh();
     String getGiaBanText();
-    String getPhanTramSiText();
-    String getGiaBanSiText();
+
     String getSoLuongText();
     String getSoLoText();
     String getHanSuDungText();
@@ -32,10 +31,8 @@ public interface IImportView {
     void clearCart();
     void clearForm();
     void updateTotalLabel(String text);
-    void setGiaBanSiText(String text);
     void setDonViTinhText(String text);
     void setGiaBanText(String text);
-    void setPhanTramSiText(String text);
 
     // === Auto-suggest: cập nhật danh sách SP ===
     void setProductList(List<Product> products);

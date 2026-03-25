@@ -8,9 +8,11 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * MainFrame: Apothecary Pro theme — Dark navy sidebar + Light content area
+ * MainFrame: Apothecary Pro — Dark navy sidebar with collapsible sections
  */
 public class MainFrame extends JFrame {
 
@@ -18,16 +20,25 @@ public class MainFrame extends JFrame {
     private JPanel contentPanel;
     private CardLayout cardLayout;
 
+    // Top-level buttons (always visible)
     private JButton btnDashboard;
     private JButton btnPOS;
-    private JButton btnProduct;
     private JButton btnImport;
+
+    // Quản Lý sub-buttons
+    private JButton btnProduct;
     private JButton btnInventory;
     private JButton btnSupplier;
     private JButton btnCustomer;
+    private JButton btnInvoice;
+
+    // Quản Trị sub-buttons
+    private JButton btnUserMgmt;
+
     private JButton btnLogout;
 
     private JButton activeButton = null;
+    private final List<JButton> allNavButtons = new ArrayList<>();
 
     public MainFrame() {
         initComponents();
@@ -37,21 +48,30 @@ public class MainFrame extends JFrame {
     private void initComponents() {
         String role = Session.getCurrentUser().getVaiTro();
         setTitle("Apothecary Pro — " + Session.getCurrentUser().getHoTen() + " (" + role + ")");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setSize(1280, 780);
         setMinimumSize(new Dimension(1000, 600));
         setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLayout(new BorderLayout(0, 0));
 
-        // === SIDEBAR (Dark Navy) ===
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                Session.goOffline();
+                System.exit(0);
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(new Thread(Session::goOffline));
+
+        // === SIDEBAR ===
         sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(AppColors.SIDEBAR_BG);
-        sidebar.setPreferredSize(new Dimension(220, 0));
+        sidebar.setPreferredSize(new Dimension(230, 0));
         sidebar.setBorder(new EmptyBorder(0, 0, 0, 0));
 
-        // --- Logo area ---
+        // --- Logo ---
         JPanel logoPanel = new JPanel();
         logoPanel.setLayout(new BoxLayout(logoPanel, BoxLayout.Y_AXIS));
         logoPanel.setBackground(AppColors.SIDEBAR_BG);
@@ -75,25 +95,62 @@ public class MainFrame extends JFrame {
         sidebar.add(createSidebarDivider());
         sidebar.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        // --- Section label ---
-        sidebar.add(createSectionLabel("CHỨC NĂNG"));
-
-        // --- Menu buttons ---
+        // ============================================================
+        //  TOP-LEVEL: Dashboard, Bán Hàng, Nhập Kho
+        // ============================================================
         btnDashboard = createSidebarButton("Dashboard");
         btnPOS       = createSidebarButton("Bán Hàng");
-        btnProduct   = createSidebarButton("Sản Phẩm");
         btnImport    = createSidebarButton("Nhập Kho");
-        btnInventory = createSidebarButton("Quản Lý Kho");
-        btnSupplier  = createSidebarButton("Nhà Cung Cấp");
-        btnCustomer  = createSidebarButton("Khách Hàng");
 
         sidebar.add(btnDashboard);
         sidebar.add(btnPOS);
-        sidebar.add(btnProduct);
         sidebar.add(btnImport);
-        sidebar.add(btnInventory);
-        sidebar.add(btnSupplier);
-        sidebar.add(btnCustomer);
+
+        sidebar.add(Box.createRigidArea(new Dimension(0, 6)));
+        sidebar.add(createSidebarDivider());
+        sidebar.add(Box.createRigidArea(new Dimension(0, 6)));
+
+        // ============================================================
+        //  COLLAPSIBLE: Quản Lý (Sản Phẩm, Kho, NCC, Khách Hàng)
+        // ============================================================
+        btnProduct   = createSubButton("Sản Phẩm");
+        btnInventory = createSubButton("Quản Lý Kho");
+        btnSupplier  = createSubButton("Nhà Cung Cấp");
+        btnCustomer  = createSubButton("Khách Hàng");
+        btnInvoice   = createSubButton("Hóa Đơn");
+
+        JPanel quanLyContainer = new JPanel();
+        quanLyContainer.setLayout(new BoxLayout(quanLyContainer, BoxLayout.Y_AXIS));
+        quanLyContainer.setBackground(AppColors.SIDEBAR_BG);
+        quanLyContainer.setVisible(false); // collapsed by default
+
+        quanLyContainer.add(btnProduct);
+        quanLyContainer.add(btnInventory);
+        quanLyContainer.add(btnSupplier);
+        quanLyContainer.add(btnCustomer);
+        quanLyContainer.add(btnInvoice);
+
+        JButton btnQuanLyToggle = createSectionToggle("QUẢN LÝ", quanLyContainer);
+        sidebar.add(btnQuanLyToggle);
+        sidebar.add(quanLyContainer);
+
+        sidebar.add(Box.createRigidArea(new Dimension(0, 2)));
+
+        // ============================================================
+        //  COLLAPSIBLE: Quản Trị (Người Dùng)
+        // ============================================================
+        btnUserMgmt = createSubButton("Người Dùng");
+
+        JPanel quanTriContainer = new JPanel();
+        quanTriContainer.setLayout(new BoxLayout(quanTriContainer, BoxLayout.Y_AXIS));
+        quanTriContainer.setBackground(AppColors.SIDEBAR_BG);
+        quanTriContainer.setVisible(false); // collapsed by default
+
+        quanTriContainer.add(btnUserMgmt);
+
+        JButton btnQuanTriToggle = createSectionToggle("QUẢN TRỊ", quanTriContainer);
+        sidebar.add(btnQuanTriToggle);
+        sidebar.add(quanTriContainer);
 
         // --- Spacer ---
         sidebar.add(Box.createVerticalGlue());
@@ -127,29 +184,33 @@ public class MainFrame extends JFrame {
 
         add(sidebar, BorderLayout.WEST);
 
-        // === CONTENT AREA (Light) ===
+        // === CONTENT AREA ===
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
         contentPanel.setBackground(AppColors.NEUTRAL);
 
-        contentPanel.add(createPlaceholder("Dashboard", "Thống kê doanh thu, cảnh báo hết hạn, top bán chạy"), "dashboard");
-        contentPanel.add(createPlaceholder("Bán Hàng (POS)", "Tìm thuốc, thêm giỏ hàng, thanh toán FEFO"), "pos");
+        contentPanel.add(new presentation.panel.ReportPanel(), "dashboard");
+        contentPanel.add(new presentation.panel.POSPanel(), "pos");
         contentPanel.add(new ProductPanel(), "product");
         contentPanel.add(new presentation.panel.ImportPanel(), "import");
         contentPanel.add(new presentation.panel.InventoryPanel(), "inventory");
-        contentPanel.add(createPlaceholder("Nhà Cung Cấp", "Quản lý nhà cung cấp — Đang phát triển..."), "supplier");
-        contentPanel.add(createPlaceholder("Khách Hàng", "Danh sách khách hàng & lịch sử mua hàng"), "customer");
+        contentPanel.add(new presentation.panel.SupplierPanel(), "supplier");
+        contentPanel.add(new presentation.panel.CustomerPanel(), "customer");
+        contentPanel.add(new presentation.panel.InvoicePanel(), "invoice");
+        contentPanel.add(new presentation.panel.UserManagementPanel(), "usermgmt");
 
         add(contentPanel, BorderLayout.CENTER);
 
         // === EVENTS ===
         btnDashboard.addActionListener(e -> switchPanel("dashboard", btnDashboard));
         btnPOS.addActionListener(e -> switchPanel("pos", btnPOS));
-        btnProduct.addActionListener(e -> switchPanel("product", btnProduct));
         btnImport.addActionListener(e -> switchPanel("import", btnImport));
+        btnProduct.addActionListener(e -> switchPanel("product", btnProduct));
         btnInventory.addActionListener(e -> switchPanel("inventory", btnInventory));
         btnSupplier.addActionListener(e -> switchPanel("supplier", btnSupplier));
         btnCustomer.addActionListener(e -> switchPanel("customer", btnCustomer));
+        btnInvoice.addActionListener(e -> switchPanel("invoice", btnInvoice));
+        btnUserMgmt.addActionListener(e -> switchPanel("usermgmt", btnUserMgmt));
         btnLogout.addActionListener(e -> doLogout());
 
         // Default view
@@ -163,9 +224,21 @@ public class MainFrame extends JFrame {
     private void applyPermissions() {
         if (!Session.isAdmin()) {
             btnDashboard.setVisible(false);
-            btnProduct.setVisible(false);
             btnImport.setVisible(false);
+            // Quản Lý: ẩn NCC, Kho, Hóa đơn (NV chỉ coi SP + KH)
             btnSupplier.setVisible(false);
+            btnInventory.setVisible(false);
+            btnInvoice.setVisible(false);
+            // Quản Trị: ẩn toàn bộ
+            btnUserMgmt.getParent().setVisible(false);
+            for (Component c : sidebar.getComponents()) {
+                if (c instanceof JButton) {
+                    JButton b = (JButton) c;
+                    if (b.getText() != null && b.getText().contains("QUẢN TRỊ")) {
+                        b.setVisible(false);
+                    }
+                }
+            }
         }
     }
 
@@ -175,7 +248,6 @@ public class MainFrame extends JFrame {
     }
 
     private void setActiveButton(JButton button) {
-        // Reset previous
         if (activeButton != null) {
             activeButton.setBackground(AppColors.SIDEBAR_BG);
             activeButton.setForeground(AppColors.SIDEBAR_TEXT);
@@ -200,6 +272,9 @@ public class MainFrame extends JFrame {
 
     // ================ UI HELPERS ================
 
+    /**
+     * Top-level sidebar button (Dashboard, Bán Hàng, Nhập Kho, Đăng Xuất)
+     */
     private JButton createSidebarButton(String text) {
         JButton btn = new JButton("  " + text);
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -211,10 +286,9 @@ public class MainFrame extends JFrame {
         btn.setOpaque(true);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        btn.setPreferredSize(new Dimension(220, 40));
-        btn.setBorder(new EmptyBorder(0, 12, 0, 12));
+        btn.setPreferredSize(new Dimension(230, 40));
+        btn.setBorder(new EmptyBorder(0, 16, 0, 12));
 
-        // Hover effect
         btn.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
@@ -223,7 +297,6 @@ public class MainFrame extends JFrame {
                     btn.setForeground(Color.WHITE);
                 }
             }
-
             @Override
             public void mouseExited(MouseEvent e) {
                 if (btn != activeButton) {
@@ -233,7 +306,93 @@ public class MainFrame extends JFrame {
             }
         });
 
+        allNavButtons.add(btn);
         return btn;
+    }
+
+    /**
+     * Sub-button inside a collapsible section — indented further left
+     */
+    private JButton createSubButton(String text) {
+        JButton btn = new JButton("  " + text);
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setForeground(AppColors.SIDEBAR_TEXT);
+        btn.setBackground(AppColors.SIDEBAR_BG);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setOpaque(true);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        btn.setPreferredSize(new Dimension(230, 36));
+        btn.setBorder(new EmptyBorder(0, 36, 0, 12)); // extra indent
+
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (btn != activeButton) {
+                    btn.setBackground(AppColors.SIDEBAR_HOVER);
+                    btn.setForeground(Color.WHITE);
+                }
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                if (btn != activeButton) {
+                    btn.setBackground(AppColors.SIDEBAR_BG);
+                    btn.setForeground(AppColors.SIDEBAR_TEXT);
+                }
+            }
+        });
+
+        allNavButtons.add(btn);
+        return btn;
+    }
+
+    /**
+     * Collapsible section header — click to show/hide the container
+     */
+    private JButton createSectionToggle(String title, JPanel container) {
+        // Arrow indicator
+        String arrowDown = "\u25BC"; // ▼
+        String arrowUp   = "\u25B2"; // ▲
+
+        JButton toggle = new JButton("  " + title + "   " + arrowDown);
+        toggle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        toggle.setForeground(AppColors.SECONDARY_LIGHT);
+        toggle.setBackground(AppColors.SIDEBAR_BG);
+        toggle.setHorizontalAlignment(SwingConstants.LEFT);
+        toggle.setBorderPainted(false);
+        toggle.setFocusPainted(false);
+        toggle.setOpaque(true);
+        toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        toggle.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        toggle.setPreferredSize(new Dimension(230, 34));
+        toggle.setBorder(new EmptyBorder(6, 14, 4, 12));
+
+        // Hover
+        toggle.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                toggle.setBackground(new Color(0x3A, 0x42, 0x56));
+                toggle.setForeground(Color.WHITE);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                toggle.setBackground(AppColors.SIDEBAR_BG);
+                toggle.setForeground(AppColors.SECONDARY_LIGHT);
+            }
+        });
+
+        // Toggle action
+        toggle.addActionListener(e -> {
+            boolean nowVisible = !container.isVisible();
+            container.setVisible(nowVisible);
+            toggle.setText("  " + title + "   " + (nowVisible ? arrowUp : arrowDown));
+            sidebar.revalidate();
+            sidebar.repaint();
+        });
+
+        return toggle;
     }
 
     private JPanel createSidebarDivider() {
@@ -242,46 +401,5 @@ public class MainFrame extends JFrame {
         divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
         divider.setPreferredSize(new Dimension(0, 1));
         return divider;
-    }
-
-    private JLabel createSectionLabel(String text) {
-        JLabel label = new JLabel("  " + text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        label.setForeground(AppColors.SECONDARY_LIGHT);
-        label.setBorder(new EmptyBorder(8, 14, 6, 0));
-        label.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        return label;
-    }
-
-    private JPanel createPlaceholder(String title, String description) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(AppColors.NEUTRAL);
-
-        JPanel inner = new JPanel();
-        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-        inner.setOpaque(false);
-
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblTitle.setForeground(AppColors.PRIMARY);
-        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-        inner.add(lblTitle);
-        inner.add(Box.createRigidArea(new Dimension(0, 6)));
-
-        JLabel lblDesc = new JLabel(description);
-        lblDesc.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblDesc.setForeground(AppColors.TEXT_SECONDARY);
-        lblDesc.setAlignmentX(Component.CENTER_ALIGNMENT);
-        inner.add(lblDesc);
-        inner.add(Box.createRigidArea(new Dimension(0, 16)));
-
-        JLabel lblStatus = new JLabel("Đang phát triển...");
-        lblStatus.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        lblStatus.setForeground(AppColors.SECONDARY_LIGHT);
-        lblStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
-        inner.add(lblStatus);
-
-        panel.add(inner);
-        return panel;
     }
 }

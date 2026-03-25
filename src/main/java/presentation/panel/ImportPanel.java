@@ -38,7 +38,7 @@ public class ImportPanel extends JPanel implements IImportView {
 
 
     // Section 1: Sản phẩm
-    private JTextField txtTenSP, txtDVT, txtGiaBan, txtPhanTramSi, txtGiaBanSi;
+    private JTextField txtTenSP, txtDVT, txtGiaBan;
 
     // Section 2: Lô hàng
     private JTextField txtSoLo, txtHSD, txtSoLuong, txtGiaNhap;
@@ -60,6 +60,14 @@ public class ImportPanel extends JPanel implements IImportView {
         setBackground(AppColors.NEUTRAL);
         initComponents();
         presenter.init();
+
+        // ★ Khi chuyển sang tab Nhập Kho → refresh danh sách NCC (có thể vừa thêm mới)
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                presenter.loadSuppliers();
+            }
+        });
     }
 
     // ================================================================
@@ -144,30 +152,9 @@ public class ImportPanel extends JPanel implements IImportView {
         addMoneyField(txtGiaBan);
         addFormFieldWithSuffix(panel, "Giá bán lẻ:", txtGiaBan, "VNĐ");
 
-        // Row: %Si + GiaBanSi
-        JPanel siRow = new JPanel(new GridLayout(1, 2, 8, 0));
-        siRow.setOpaque(false);
-        siRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-        siRow.setAlignmentX(LEFT_ALIGNMENT);
+        // Row: Ghi chú sau giá bán
 
-        txtPhanTramSi = new JTextField();
-        txtPhanTramSi.setToolTipText("% giam si (VD: 10 hoac 0.5)");
-        addNumericFilter(txtPhanTramSi);
-        txtPhanTramSi.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) { presenter.calcGiaBanSi(); }
-        });
 
-        txtGiaBanSi = new JTextField();
-        txtGiaBanSi.setEditable(false);
-        txtGiaBanSi.setBackground(AppColors.NEUTRAL);
-
-        JPanel pctPanel = createLabeledField("Giảm sỉ (%):", txtPhanTramSi);
-        JPanel siPanel = createLabeledField("Giá sỉ (VNĐ):", txtGiaBanSi);
-        siRow.add(pctPanel);
-        siRow.add(siPanel);
-        panel.add(siRow);
-        panel.add(Box.createRigidArea(new Dimension(0, 8)));
 
         panel.add(Box.createVerticalGlue());
         return panel;
@@ -416,10 +403,6 @@ public class ImportPanel extends JPanel implements IImportView {
     @Override
     public String getGiaBanText() { return txtGiaBan.getText(); }
     @Override
-    public String getPhanTramSiText() { return txtPhanTramSi.getText(); }
-    @Override
-    public String getGiaBanSiText() { return txtGiaBanSi.getText(); }
-    @Override
     public String getSoLuongText() { return txtSoLuong.getText(); }
     @Override
     public String getSoLoText() { return txtSoLo.getText(); }
@@ -461,8 +444,6 @@ public class ImportPanel extends JPanel implements IImportView {
         txtTenSP.setText("");
         txtDVT.setText("");
         txtGiaBan.setText("");
-        txtPhanTramSi.setText("");
-        txtGiaBanSi.setText("");
         txtSoLo.setText("");
         txtHSD.setText("");
         txtSoLuong.setText("");
@@ -473,13 +454,9 @@ public class ImportPanel extends JPanel implements IImportView {
     public void updateTotalLabel(String text) { lblTotal.setText(text); }
 
     @Override
-    public void setGiaBanSiText(String text) { txtGiaBanSi.setText(text); }
-    @Override
     public void setDonViTinhText(String text) { txtDVT.setText(text); }
     @Override
     public void setGiaBanText(String text) { txtGiaBan.setText(text); }
-    @Override
-    public void setPhanTramSiText(String text) { txtPhanTramSi.setText(text); }
 
     @Override
     public void setProductList(List<Product> products) {

@@ -12,7 +12,6 @@ public class Product {
     private String tenSP;
     private String donViTinh;
     private BigDecimal giaBan;
-    private BigDecimal giaBanSi;     // ★ Giá sỉ (bán nguyên hộp)
     private boolean trangThai;
 
     public Product() {}
@@ -38,8 +37,7 @@ public class Product {
     public BigDecimal getGiaBan() { return giaBan; }
     public void setGiaBan(BigDecimal giaBan) { this.giaBan = giaBan; }
 
-    public BigDecimal getGiaBanSi() { return giaBanSi; }
-    public void setGiaBanSi(BigDecimal giaBanSi) { this.giaBanSi = giaBanSi; }
+
 
     public boolean isTrangThai() { return trangThai; }
     public void setTrangThai(boolean trangThai) { this.trangThai = trangThai; }

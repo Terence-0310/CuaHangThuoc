@@ -33,11 +33,7 @@ public interface IProductView {
     /** Lấy text giá bán (raw string, chưa parse) */
     String getGiaBanText();
 
-    /** Lấy text giá bán sỉ (raw string) */
-    String getGiaBanSiText();
 
-    /** Lấy text phần trăm giảm sỉ (raw string) */
-    String getPhanTramSiText();
 
     // ============== HIỂN THỊ DỮ LIỆU LÊN FORM ==============
 
@@ -46,14 +42,12 @@ public interface IProductView {
 
     /** Điền thông tin sản phẩm vào form */
     void displayFormData(int maSP, String tenSP, String donViTinh,
-                         String giaBan, String giaBanSi, String phanTramSi,
-                         boolean dangBan);
+                         String giaBan, boolean dangBan);
 
     /** Xóa trắng tất cả field trong form */
     void clearForm();
 
-    /** Set text cho ô Giá bán sỉ (auto-calc) */
-    void setGiaBanSiText(String text);
+
 
     // ============== PHÂN TRANG ==============
 

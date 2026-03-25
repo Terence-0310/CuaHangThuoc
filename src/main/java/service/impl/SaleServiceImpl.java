@@ -44,7 +44,7 @@ public class SaleServiceImpl implements ISaleService {
     }
 
     @Override
-    public boolean checkout(List<CartItem> cart, String soDT, String tenKH, String phuongThucTT) {
+    public int checkout(List<CartItem> cart, String soDT, String tenKH, String phuongThucTT) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Giỏ hàng trống");
         }
@@ -84,7 +84,7 @@ public class SaleServiceImpl implements ISaleService {
             // 4. Update Invoice total
             invoiceRepo.updateTotal(conn, maHD);
             conn.commit();              // ★ COMMIT TRANSACTION
-            return true;
+            return maHD;
 
         } catch (SQLException e) {
             if (conn != null) {

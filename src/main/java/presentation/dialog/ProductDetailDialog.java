@@ -113,10 +113,8 @@ public class ProductDetailDialog extends JDialog {
         addInfoField(panel, "M\u00e3 SP", String.valueOf(p.getMaSP()));
         addInfoField(panel, "T\u00ean s\u1ea3n ph\u1ea9m", p.getTenSP());
         addInfoField(panel, "\u0110\u01a1n v\u1ecb t\u00ednh", p.getDonViTinh());
-        addInfoField(panel, "Gi\u00e1 b\u00e1n l\u1ebb",
-                p.getGiaBan() != null ? String.format("%,.0f VN\u0110", p.getGiaBan()) : "---");
-        addInfoField(panel, "Gi\u00e1 b\u00e1n s\u1ec9",
-                p.getGiaBanSi() != null ? String.format("%,.0f VN\u0110", p.getGiaBanSi()) : "---");
+        addInfoField(panel, "Giá bán",
+                p.getGiaBan() != null ? String.format("%,.0f VNĐ", p.getGiaBan()) : "---");
 
         JPanel tonPanel = new JPanel(new BorderLayout());
         tonPanel.setOpaque(false);

@@ -12,7 +12,9 @@ public class Invoice {
     private int maND;
     private LocalDateTime ngayBan;
     private BigDecimal tongTien;
-    private String phuongThucTT;    // ★ TienMat / ChuyenKhoan / QR
+    private String phuongThucTT;    // TienMat / QR
+    private String trangThai;       // Thanh cong / Da huy
+    private String lyDoHuy;
 
     // Transient
     private String tenKH;
@@ -55,4 +57,10 @@ public class Invoice {
 
     public String getTenNhanVien() { return tenNhanVien; }
     public void setTenNhanVien(String tenNhanVien) { this.tenNhanVien = tenNhanVien; }
+
+    public String getTrangThai() { return trangThai; }
+    public void setTrangThai(String trangThai) { this.trangThai = trangThai; }
+
+    public String getLyDoHuy() { return lyDoHuy; }
+    public void setLyDoHuy(String lyDoHuy) { this.lyDoHuy = lyDoHuy; }
 }

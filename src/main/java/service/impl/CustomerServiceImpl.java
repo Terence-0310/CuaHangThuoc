@@ -22,16 +22,18 @@ public class CustomerServiceImpl implements ICustomerService {
             return null; // Khách vãng lai
         }
         Customer existing = customerRepo.findByPhone(soDT.trim());
-        if (existing != null) {
-            return existing;
-        }
-        // Tạo khách mới
-        Customer newCustomer = new Customer();
-        newCustomer.setSoDT(soDT.trim());
-        newCustomer.setTenKH(tenKH != null ? tenKH.trim() : null);
-        // Dùng non-transactional insert cho findOrCreate đơn giản
-        // Transactional version sẽ dùng trong SaleServiceImpl
-        return existing; // placeholder — sẽ implement đầy đủ khi có RepoImpl
+        if (existing != null) return existing;
+        Customer c = new Customer();
+        c.setSoDT(soDT.trim());
+        c.setTenKH(tenKH != null ? tenKH.trim() : null);
+        int id = customerRepo.insert(c);
+        c.setMaKH(id);
+        return c;
+    }
+
+    @Override
+    public Customer getById(int maKH) {
+        return customerRepo.getById(maKH);
     }
 
     @Override
@@ -42,5 +44,31 @@ public class CustomerServiceImpl implements ICustomerService {
     @Override
     public List<Customer> search(String keyword) {
         return customerRepo.search(keyword);
+    }
+
+    @Override
+    public int insert(Customer customer) {
+        return customerRepo.insert(customer);
+    }
+
+    @Override
+    public boolean update(Customer customer) {
+        return customerRepo.update(customer);
+    }
+
+    @Override
+    public boolean delete(int maKH) {
+        return customerRepo.delete(maKH);
+    }
+
+    @Override
+    public List<Customer> getPagedList(int offset, int pageSize, String keyword,
+                                        String sortCol, String sortDir) {
+        return customerRepo.getPagedList(offset, pageSize, keyword, sortCol, sortDir);
+    }
+
+    @Override
+    public int countFiltered(String keyword) {
+        return customerRepo.countFiltered(keyword);
     }
 }

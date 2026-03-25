@@ -142,7 +142,6 @@ public class ProductRepositoryImpl implements IProductRepository {
             case "TenSP":     return "sp.TenSP";
             case "DonViTinh":  return "sp.DonViTinh";
             case "GiaBan":    return "sp.GiaBan";
-            case "GiaBanSi":  return "sp.GiaBanSi";
             case "TongTonKho": return "TongTonKho";
             case "TrangThai": return "sp.TrangThai";
             default:          return "sp.MaSP";
@@ -187,13 +186,12 @@ public class ProductRepositoryImpl implements IProductRepository {
 
     @Override
     public int insert(Product p) {
-        String sql = "INSERT INTO SanPham (TenSP, DonViTinh, GiaBan, GiaBanSi) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO SanPham (TenSP, DonViTinh, GiaBan) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setNString(1, p.getTenSP());
             ps.setNString(2, p.getDonViTinh());
             ps.setBigDecimal(3, p.getGiaBan());
-            ps.setBigDecimal(4, p.getGiaBanSi());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) return keys.getInt(1);
@@ -206,15 +204,14 @@ public class ProductRepositoryImpl implements IProductRepository {
 
     @Override
     public boolean update(Product p) {
-        String sql = "UPDATE SanPham SET TenSP = ?, DonViTinh = ?, GiaBan = ?, GiaBanSi = ?, TrangThai = ? WHERE MaSP = ?";
+        String sql = "UPDATE SanPham SET TenSP = ?, DonViTinh = ?, GiaBan = ?, TrangThai = ? WHERE MaSP = ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setNString(1, p.getTenSP());
             ps.setNString(2, p.getDonViTinh());
             ps.setBigDecimal(3, p.getGiaBan());
-            ps.setBigDecimal(4, p.getGiaBanSi());
-            ps.setBoolean(5, p.isTrangThai());
-            ps.setInt(6, p.getMaSP());
+            ps.setBoolean(4, p.isTrangThai());
+            ps.setInt(5, p.getMaSP());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi cập nhật SanPham", e);
@@ -253,7 +250,6 @@ public class ProductRepositoryImpl implements IProductRepository {
         p.setTenSP(rs.getNString("TenSP"));
         p.setDonViTinh(rs.getNString("DonViTinh"));
         p.setGiaBan(rs.getBigDecimal("GiaBan"));
-        try { p.setGiaBanSi(rs.getBigDecimal("GiaBanSi")); } catch (SQLException ignored) {}
         p.setTrangThai(rs.getBoolean("TrangThai"));
         return p;
     }

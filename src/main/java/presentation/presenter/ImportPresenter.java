@@ -56,38 +56,9 @@ public class ImportPresenter {
         if (p == null) return;
         view.setDonViTinhText(p.getDonViTinh());
         view.setGiaBanText(p.getGiaBan() != null ? String.format("%,.0f", p.getGiaBan()) : "");
-        view.setGiaBanSiText(p.getGiaBanSi() != null ? String.format("%,.0f", p.getGiaBanSi()) : "");
-        // Tính %
-        if (p.getGiaBan() != null && p.getGiaBanSi() != null
-                && p.getGiaBan().signum() > 0) {
-            BigDecimal pct = BigDecimal.ONE
-                    .subtract(p.getGiaBanSi().divide(p.getGiaBan(), 4, RoundingMode.HALF_UP))
-                    .multiply(BigDecimal.valueOf(100))
-                    .setScale(0, RoundingMode.HALF_UP);
-            view.setPhanTramSiText(pct.toPlainString());
-        } else {
-            view.setPhanTramSiText("");
-        }
     }
 
-    // ================================================================
-    //  Auto-calc giá sỉ
-    // ================================================================
 
-    public void calcGiaBanSi() {
-        try {
-            String giaBanText = view.getGiaBanText().replace(",", "").trim();
-            // % có thể nhập "0.1" hoặc "0,1" → chuẩn hóa thành "."
-            String pctText = view.getPhanTramSiText().replace(",", ".").trim();
-            if (giaBanText.isEmpty() || pctText.isEmpty()) return;
-
-            BigDecimal giaBan = new BigDecimal(giaBanText);
-            BigDecimal pct = new BigDecimal(pctText);
-            BigDecimal giaSi = giaBan.multiply(BigDecimal.ONE.subtract(pct.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)))
-                    .setScale(0, RoundingMode.HALF_UP);
-            view.setGiaBanSiText(String.format("%,d", giaSi.longValue()));
-        } catch (NumberFormatException ignored) {}
-    }
 
     // ================================================================
     //  Thêm vào giỏ
@@ -116,19 +87,6 @@ public class ImportPresenter {
             return;
         }
 
-        BigDecimal giaBanSi = null;
-        String siText = view.getGiaBanSiText().replace(",", "").trim();
-        if (!siText.isEmpty()) {
-            try {
-                giaBanSi = new BigDecimal(siText);
-            } catch (NumberFormatException e) {
-                view.showWarning("Giá bán sỉ không hợp lệ!");
-                return;
-            }
-        }
-        if (giaBanSi == null) {
-            giaBanSi = giaBan; // mặc định = giá lẻ
-        }
 
         // --- Validate Lô hàng ---
         String soLo = view.getSoLoText().trim();
@@ -184,7 +142,6 @@ public class ImportPresenter {
         item.setTenSP(tenSP);
         item.setDonViTinh(dvt);
         item.setGiaBan(giaBan);
-        item.setGiaBanSi(giaBanSi);
         item.setSoLo(soLo);
         item.setHanSuDung(hsd);
         item.setSoLuong(soLuong);
@@ -204,7 +161,6 @@ public class ImportPresenter {
             tempP.setTenSP(tenSP);
             tempP.setDonViTinh(dvt);
             tempP.setGiaBan(giaBan);
-            tempP.setGiaBanSi(giaBanSi);
             tempP.setTrangThai(true);
             productList.add(tempP);
             view.setProductList(productList);
@@ -269,7 +225,7 @@ public class ImportPresenter {
         view.setLoading(true);
         try {
             int maPN = nhapKhoDAO.saveImportTicket(cart, maNCC);
-            view.showInfo("✅ Lưu thành công!\nMã phiếu nhập: PN-" + maPN
+            view.showInfo("Lưu thành công!\nMã phiếu nhập: PN-" + maPN
                     + "\nSố lô hàng: " + totalItems
                     + "\nTổng tiền: " + String.format("%,.0f", totalMoney) + " VNĐ");
 

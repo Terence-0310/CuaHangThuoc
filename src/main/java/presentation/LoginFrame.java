@@ -155,6 +155,7 @@ public class LoginFrame extends JFrame {
         try {
             User user = authService.login(username, password);
             Session.setCurrentUser(user);
+            Session.goOnline();
             new MainFrame().setVisible(true);
             this.dispose();
         } catch (IllegalArgumentException ex) {

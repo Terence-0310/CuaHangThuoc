@@ -11,7 +11,6 @@ public class ImportCartItem {
     private String tenSP;
     private String donViTinh;
     private BigDecimal giaBan;
-    private BigDecimal giaBanSi;
     private int soLuong;
     private String soLo;
     private LocalDate hanSuDung;
@@ -33,8 +32,7 @@ public class ImportCartItem {
     public BigDecimal getGiaBan() { return giaBan; }
     public void setGiaBan(BigDecimal giaBan) { this.giaBan = giaBan; }
 
-    public BigDecimal getGiaBanSi() { return giaBanSi; }
-    public void setGiaBanSi(BigDecimal giaBanSi) { this.giaBanSi = giaBanSi; }
+
 
     public int getSoLuong() { return soLuong; }
     public void setSoLuong(int soLuong) { this.soLuong = soLuong; }

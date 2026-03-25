@@ -39,7 +39,7 @@ public class ProductPresenter {
     // ★ Whitelist: map UI column index → DB column name
     // index 0 = Checkbox (skip), 1 = MaSP, 2 = TenSP, ...
     private static final String[] COLUMN_DB_NAMES = {
-        null, "MaSP", "TenSP", "DonViTinh", "GiaBan", "GiaBanSi", "TongTonKho", "TrangThai"
+        null, "MaSP", "TenSP", "DonViTinh", "GiaBan", "TongTonKho", "TrangThai"
     };
 
     // ============== CONSTRUCTOR ==============
@@ -193,17 +193,10 @@ public class ProductPresenter {
         if (p == null) return;
 
         String giaBan = p.getGiaBan() != null ? p.getGiaBan().toBigInteger().toString() : "";
-        String giaBanSi = p.getGiaBanSi() != null ? p.getGiaBanSi().toBigInteger().toString() : "";
-
-        String phanTramSi = "";
-        if (p.getGiaBan() != null && p.getGiaBanSi() != null && p.getGiaBan().signum() > 0) {
-            double pct = (1 - p.getGiaBanSi().doubleValue() / p.getGiaBan().doubleValue()) * 100;
-            phanTramSi = String.format("%.5f", pct).replaceAll("0+$", "").replaceAll("\\.$", "");
-        }
 
         view.displayFormData(
             p.getMaSP(), p.getTenSP(), p.getDonViTinh(),
-            giaBan, giaBanSi, phanTramSi, p.isTrangThai()
+            giaBan, p.isTrangThai()
         );
         view.updateButtonState(true);
     }
@@ -314,25 +307,6 @@ public class ProductPresenter {
         view.focusTenSP();
     }
 
-    /** Auto-calc giá sỉ khi nhập % — dùng BigDecimal tránh sai số dấu phẩy động */
-    public void calcWholesalePrice() {
-        try {
-            String giaBanText = view.getGiaBanText().trim().replace(",", "");
-            String phanTramText = view.getPhanTramSiText().trim().replace(",", ".");
-            if (giaBanText.isEmpty() || phanTramText.isEmpty()) {
-                view.setGiaBanSiText("");
-                return;
-            }
-            BigDecimal giaBan = new BigDecimal(giaBanText);
-            BigDecimal phanTram = new BigDecimal(phanTramText);
-            if (phanTram.compareTo(BigDecimal.ZERO) < 0 || phanTram.compareTo(BigDecimal.valueOf(100)) > 0) return;
-            BigDecimal giaSi = giaBan.multiply(
-                    BigDecimal.ONE.subtract(phanTram.divide(BigDecimal.valueOf(100), 6, java.math.RoundingMode.HALF_UP))
-            ).setScale(0, java.math.RoundingMode.HALF_UP);
-            view.setGiaBanSiText(String.valueOf(giaSi.longValue()));
-        } catch (NumberFormatException ignored) {}
-    }
-
     /** Search thay đổi → reset page 1 */
     public void onSearchChanged() {
         currentPage = 1;
@@ -357,18 +331,10 @@ public class ProductPresenter {
         if (dvt.isEmpty()) throw new IllegalArgumentException("Đơn vị tính không được để trống!");
 
         BigDecimal giaBan = parseMoney(view.getGiaBanText(), "Giá bán");
-        BigDecimal giaBanSi = null;
-        String giaBanSiText = view.getGiaBanSiText().trim();
-        if (!giaBanSiText.isEmpty()) {
-            giaBanSi = parseMoney(giaBanSiText, "Giá bán sỉ");
-            if (giaBanSi.compareTo(giaBan) > 0)
-                throw new IllegalArgumentException("Giá bán sỉ phải nhỏ hơn hoặc bằng giá bán lẻ!");
-        }
 
         p.setTenSP(tenSP);
         p.setDonViTinh(dvt);
         p.setGiaBan(giaBan);
-        p.setGiaBanSi(giaBanSi);
         return p;
     }
 

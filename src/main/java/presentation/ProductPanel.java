@@ -20,6 +20,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
+import java.sql.*;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.Set;
@@ -39,8 +40,7 @@ public class ProductPanel extends JPanel implements IProductView {
     private final DecimalFormat moneyFormat = new DecimalFormat("#,### VNĐ");
 
     // --- Form fields ---
-    private JTextField txtMaSP, txtTenSP, txtDonViTinh, txtGiaBan, txtGiaBanSi;
-    private JTextField txtPhanTramSi;
+    private JTextField txtMaSP, txtTenSP, txtDonViTinh, txtGiaBan;
     private JTextField txtSearch;
     private JComboBox<String> cboFilter;
 
@@ -170,27 +170,9 @@ public class ProductPanel extends JPanel implements IProductView {
 
         txtGiaBan = new JTextField();
         addNumericFilter(txtGiaBan);
-        addFormRowWithSuffix(formPanel, "Giá bán lẻ:", txtGiaBan, "VNĐ");
+        addFormRowWithSuffix(formPanel, "Giá bán:", txtGiaBan, "VNĐ");
 
-        txtPhanTramSi = new JTextField();
-        txtPhanTramSi.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) { presenter.calcWholesalePrice(); }
-            @Override
-            public void keyTyped(KeyEvent e) {
-                char c = e.getKeyChar();
-                if (!Character.isDigit(c) && c != '.' && c != ','
-                        && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
-                    e.consume();
-                }
-            }
-        });
-        addFormRowWithSuffix(formPanel, "Giảm giá sỉ:", txtPhanTramSi, "%");
 
-        txtGiaBanSi = new JTextField();
-        txtGiaBanSi.setEditable(false);
-        txtGiaBanSi.setBackground(AppColors.NEUTRAL);
-        addFormRowWithSuffix(formPanel, "Giá bán sỉ:", txtGiaBanSi, "VNĐ");
 
         formPanel.add(Box.createRigidArea(new Dimension(0, 16)));
 
@@ -242,7 +224,7 @@ public class ProductPanel extends JPanel implements IProductView {
         rightWrapper.setBackground(Color.WHITE);
         rightWrapper.setBorder(new EmptyBorder(0, 12, 0, 24));
 
-        String[] columns = {"", "Mã SP", "Tên Sản Phẩm", "ĐVT", "Giá Bán", "Giá Sỉ", "Số lượng", "Trạng Thái"};
+        String[] columns = {"", "Mã SP", "Tên Sản Phẩm", "ĐVT", "Giá Bán", "Số lượng", "Trạng Thái"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -253,8 +235,8 @@ public class ProductPanel extends JPanel implements IProductView {
                 switch (col) {
                     case 0: return Boolean.class;
                     case 1: return Integer.class;
-                    case 4: case 5: return BigDecimal.class;
-                    case 6: return Integer.class;
+                    case 4: return BigDecimal.class;
+                    case 5: return Integer.class;
                     default: return String.class;
                 }
             }
@@ -328,15 +310,14 @@ public class ProductPanel extends JPanel implements IProductView {
         table.getColumnModel().getColumn(0).setMaxWidth(35);
         table.getColumnModel().getColumn(1).setPreferredWidth(55);
         table.getColumnModel().getColumn(1).setMaxWidth(70);
-        table.getColumnModel().getColumn(2).setPreferredWidth(200);
+        table.getColumnModel().getColumn(2).setPreferredWidth(250);
         table.getColumnModel().getColumn(3).setPreferredWidth(50);
         table.getColumnModel().getColumn(3).setMaxWidth(70);
-        table.getColumnModel().getColumn(4).setPreferredWidth(110);
-        table.getColumnModel().getColumn(5).setPreferredWidth(110);
-        table.getColumnModel().getColumn(6).setPreferredWidth(70);
-        table.getColumnModel().getColumn(6).setMaxWidth(90);
-        table.getColumnModel().getColumn(7).setPreferredWidth(90);
-        table.getColumnModel().getColumn(7).setMaxWidth(110);
+        table.getColumnModel().getColumn(4).setPreferredWidth(120);
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);
+        table.getColumnModel().getColumn(5).setMaxWidth(100);
+        table.getColumnModel().getColumn(6).setPreferredWidth(90);
+        table.getColumnModel().getColumn(6).setMaxWidth(110);
 
         table.setDefaultRenderer(Object.class, createCellRenderer());
         table.setDefaultRenderer(Integer.class, createCellRenderer());
@@ -370,6 +351,14 @@ public class ProductPanel extends JPanel implements IProductView {
         });
         contextMenu.add(menuViewDetail);
 
+        // ★ Menu: Xem lịch sử bán hàng
+        JMenuItem menuSalesHistory = new JMenuItem("Xem lịch sử bán hàng");
+        menuSalesHistory.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        menuSalesHistory.setForeground(new Color(0x17, 0xA2, 0xB8));
+        menuSalesHistory.addActionListener(e -> showSalesHistory());
+        contextMenu.addSeparator();
+        contextMenu.add(menuSalesHistory);
+
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mousePressed(java.awt.event.MouseEvent e) { showContextMenu(e); }
@@ -395,13 +384,10 @@ public class ProductPanel extends JPanel implements IProductView {
 
         // === PERMISSIONS (pure UI) ===
         if (!Session.isAdmin()) {
-            btnAdd.setEnabled(false);
-            btnUpdate.setEnabled(false);
-            btnToggle.setEnabled(false);
-            txtTenSP.setEditable(false);
-            txtDonViTinh.setEditable(false);
-            txtGiaBan.setEditable(false);
-            txtPhanTramSi.setEditable(false);
+            // NV: ẩn toàn bộ form bên trái, chỉ hiện table
+            splitPane.setLeftComponent(null);
+            splitPane.setDividerSize(0);
+            splitPane.setDividerLocation(0);
         } else {
             updateButtonState(false);
         }
@@ -430,12 +416,6 @@ public class ProductPanel extends JPanel implements IProductView {
     public String getGiaBanText() { return txtGiaBan.getText(); }
 
     @Override
-    public String getGiaBanSiText() { return txtGiaBanSi.getText(); }
-
-    @Override
-    public String getPhanTramSiText() { return txtPhanTramSi.getText(); }
-
-    @Override
     public void displayProducts(List<Product> products, Set<Integer> checkedIds) {
         suppressModelListener = true;
         tableModel.setRowCount(0);
@@ -446,7 +426,6 @@ public class ProductPanel extends JPanel implements IProductView {
                     p.getTenSP(),
                     p.getDonViTinh(),
                     p.getGiaBan(),
-                    p.getGiaBanSi(),
                     p.getTongTonKho(),
                     p.isTrangThai() ? "Đang bán" : "Ngừng bán"
             });
@@ -456,14 +435,11 @@ public class ProductPanel extends JPanel implements IProductView {
 
     @Override
     public void displayFormData(int maSP, String tenSP, String donViTinh,
-                                String giaBan, String giaBanSi, String phanTramSi,
-                                boolean dangBan) {
+                                String giaBan, boolean dangBan) {
         txtMaSP.setText(String.valueOf(maSP));
         txtTenSP.setText(tenSP);
         txtDonViTinh.setText(donViTinh);
         txtGiaBan.setText(giaBan);
-        txtGiaBanSi.setText(giaBanSi);
-        txtPhanTramSi.setText(phanTramSi);
         setToggleButton(dangBan);
     }
 
@@ -473,13 +449,8 @@ public class ProductPanel extends JPanel implements IProductView {
         txtTenSP.setText("");
         txtDonViTinh.setText("");
         txtGiaBan.setText("");
-        txtGiaBanSi.setText("");
-        txtPhanTramSi.setText("");
         table.clearSelection();
     }
-
-    @Override
-    public void setGiaBanSiText(String text) { txtGiaBanSi.setText(text); }
 
     @Override
     public void updatePaginationUI(int currentPage, int totalPages) {
@@ -758,9 +729,9 @@ public class ProductPanel extends JPanel implements IProductView {
             public Component getTableCellRendererComponent(JTable t, Object val,
                     boolean sel, boolean focus, int row, int col) {
                 String display;
-                if ((col == 4 || col == 5) && val instanceof BigDecimal) {
+                if (col == 4 && val instanceof BigDecimal) {
                     display = moneyFormat.format(val);
-                } else if ((col == 4 || col == 5) && val == null) {
+                } else if (col == 4 && val == null) {
                     display = "-";
                 } else {
                     display = val != null ? val.toString() : "";
@@ -772,17 +743,17 @@ public class ProductPanel extends JPanel implements IProductView {
                     c.setBackground(row % 2 == 0 ? Color.WHITE : AppColors.TABLE_ROW_ALT);
                 }
 
-                if (col == 7 && val != null) {
+                if (col == 6 && val != null) {
                     c.setForeground(val.toString().contains("Ngừng") ? AppColors.DANGER : AppColors.SUCCESS);
-                } else if (col == 6 && val instanceof Integer && (int) val == 0) {
+                } else if (col == 5 && val instanceof Integer && (int) val == 0) {
                     c.setForeground(AppColors.DANGER);
                 } else if (!sel) {
                     c.setForeground(AppColors.TEXT_PRIMARY);
                 }
 
-                if (col == 1 || col == 3 || col == 6 || col == 7) {
+                if (col == 1 || col == 3 || col == 5 || col == 6) {
                     setHorizontalAlignment(SwingConstants.CENTER);
-                } else if (col == 4 || col == 5) {
+                } else if (col == 4) {
                     setHorizontalAlignment(SwingConstants.RIGHT);
                 } else {
                     setHorizontalAlignment(SwingConstants.LEFT);
@@ -790,5 +761,229 @@ public class ProductPanel extends JPanel implements IProductView {
                 return c;
             }
         };
+    }
+
+    // ================================================================
+    //  ★ Xem lịch sử bán hàng của sản phẩm
+    // ================================================================
+
+    private void showSalesHistory() {
+        int row = table.getSelectedRow();
+        if (row < 0) return;
+        int maSP = (int) tableModel.getValueAt(row, 1);
+        String tenSP = tableModel.getValueAt(row, 2).toString();
+
+        String sql =
+            "SELECT hd.MaHD, hd.NgayBan, l.SoLo, ct.SoLuong AS SLBan, " +
+            "(ct.SoLuong * ct.DonGia) AS ThanhTien, " +
+            "ISNULL(kh.TenKH, N'Khách vãng lai') AS TenKH, " +
+            "ISNULL(kh.SoDT, N'---') AS SDT " +
+            "FROM ChiTietHoaDon ct " +
+            "JOIN HoaDon hd ON ct.MaHD = hd.MaHD " +
+            "LEFT JOIN KhachHang kh ON hd.MaKH = kh.MaKH " +
+            "JOIN LoHang l ON ct.MaLo = l.MaLo " +
+            "WHERE ct.MaSP = ? " +
+            "ORDER BY hd.NgayBan DESC";
+
+        String[] cols = {"Mã HĐ", "Ngày giờ bán", "Số Lô", "SL bán", "Thành tiền", "Khách hàng", "SĐT"};
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        try (Connection conn = infrastructure.database.DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maSP);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Timestamp ngay = rs.getTimestamp("NgayBan");
+                    String ngayStr = ngay != null
+                            ? ngay.toLocalDateTime().format(
+                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                            : "---";
+                    java.math.BigDecimal thanhTien = rs.getBigDecimal("ThanhTien");
+                    String thanhTienStr = thanhTien != null
+                            ? String.format("%,.0f VNĐ", thanhTien) : "---";
+                    model.addRow(new Object[]{
+                        rs.getInt("MaHD"),
+                        ngayStr,
+                        rs.getNString("SoLo"),
+                        rs.getInt("SLBan"),
+                        thanhTienStr,
+                        rs.getNString("TenKH"),
+                        rs.getString("SDT")
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Lỗi truy vấn lịch sử bán: " + e.getMessage(),
+                "SQL Error", javax.swing.JOptionPane.ERROR_MESSAGE);
+        }
+
+        // === Dialog ===
+        JDialog dlg = new JDialog(
+                (Frame) SwingUtilities.getWindowAncestor(this),
+                "Lịch sử bán hàng — " + tenSP,
+                true);
+        dlg.setSize(950, 500);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBackground(Color.WHITE);
+
+        // === Header ===
+        JPanel hdr = new JPanel(new BorderLayout());
+        hdr.setBackground(new Color(0x17, 0xA2, 0xB8));
+        hdr.setBorder(new javax.swing.border.EmptyBorder(14, 20, 14, 20));
+        JLabel lblH = new JLabel("Lịch sử bán — " + tenSP);
+        lblH.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblH.setForeground(Color.WHITE);
+        hdr.add(lblH, BorderLayout.WEST);
+        JLabel lblCount = new JLabel(model.getRowCount() + " hóa đơn");
+        lblCount.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCount.setForeground(new Color(0xE0, 0xF7, 0xFA));
+        hdr.add(lblCount, BorderLayout.EAST);
+        content.add(hdr, BorderLayout.NORTH);
+
+        if (model.getRowCount() == 0) {
+            JLabel emptyLbl = new JLabel("Sản phẩm này chưa bán cho khách hàng nào.", SwingConstants.CENTER);
+            emptyLbl.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            emptyLbl.setForeground(AppColors.TEXT_SECONDARY);
+            content.add(emptyLbl, BorderLayout.CENTER);
+        } else {
+            // === Top wrapper: header + search ===
+            JPanel topWrapper = new JPanel(new BorderLayout());
+            topWrapper.setBackground(Color.WHITE);
+
+            topWrapper.add(hdr, BorderLayout.NORTH);
+            content.remove(hdr); // remove from content NORTH, put into topWrapper
+
+            // === Search bar for batch number ===
+            JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 6));
+            searchPanel.setBackground(Color.WHITE);
+            searchPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, AppColors.NEUTRAL_DARK));
+
+            JLabel lblSearchLo = new JLabel("Lọc theo mã lô:");
+            lblSearchLo.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            lblSearchLo.setForeground(AppColors.TEXT_PRIMARY);
+            searchPanel.add(lblSearchLo);
+
+            final String PLACEHOLDER = "Nhập mã lô để lọc...";
+            JTextField txtSearchLo = new JTextField(22);
+            txtSearchLo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            txtSearchLo.setForeground(AppColors.TEXT_SECONDARY);
+            txtSearchLo.setText(PLACEHOLDER);
+            txtSearchLo.setBorder(BorderFactory.createCompoundBorder(
+                    new javax.swing.border.LineBorder(AppColors.NEUTRAL_DARK, 1),
+                    new javax.swing.border.EmptyBorder(6, 10, 6, 10)));
+
+            // Placeholder behavior
+            txtSearchLo.addFocusListener(new java.awt.event.FocusAdapter() {
+                @Override
+                public void focusGained(java.awt.event.FocusEvent e) {
+                    if (txtSearchLo.getText().equals(PLACEHOLDER)) {
+                        txtSearchLo.setText("");
+                        txtSearchLo.setForeground(AppColors.TEXT_PRIMARY);
+                    }
+                }
+                @Override
+                public void focusLost(java.awt.event.FocusEvent e) {
+                    if (txtSearchLo.getText().trim().isEmpty()) {
+                        txtSearchLo.setText(PLACEHOLDER);
+                        txtSearchLo.setForeground(AppColors.TEXT_SECONDARY);
+                    }
+                }
+            });
+            searchPanel.add(txtSearchLo);
+
+            topWrapper.add(searchPanel, BorderLayout.SOUTH);
+            content.add(topWrapper, BorderLayout.NORTH);
+
+            // === Table ===
+            JTable salesTable = new JTable(model);
+            salesTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            salesTable.setRowHeight(30);
+            salesTable.setShowGrid(false);
+            salesTable.setFillsViewportHeight(true);
+            salesTable.setIntercellSpacing(new Dimension(0, 0));
+            salesTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+            salesTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+            salesTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+            salesTable.getTableHeader().setPreferredSize(new Dimension(0, 34));
+
+            // Column widths
+            salesTable.getColumnModel().getColumn(0).setPreferredWidth(55);
+            salesTable.getColumnModel().getColumn(0).setMaxWidth(70);
+            salesTable.getColumnModel().getColumn(1).setPreferredWidth(130);
+            salesTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+            salesTable.getColumnModel().getColumn(3).setPreferredWidth(55);
+            salesTable.getColumnModel().getColumn(3).setMaxWidth(65);
+            salesTable.getColumnModel().getColumn(4).setPreferredWidth(110);
+            salesTable.getColumnModel().getColumn(5).setPreferredWidth(150);
+            salesTable.getColumnModel().getColumn(6).setPreferredWidth(100);
+
+            // Renderer
+            salesTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable t, Object v,
+                        boolean sel, boolean foc, int r, int c) {
+                    Component comp = super.getTableCellRendererComponent(t, v, sel, foc, r, c);
+                    if (!sel) comp.setBackground(r % 2 == 0 ? Color.WHITE : AppColors.TABLE_ROW_ALT);
+
+                    if (c == 0 || c == 3) {
+                        setHorizontalAlignment(SwingConstants.CENTER);
+                        if (!sel) comp.setForeground(AppColors.TEXT_PRIMARY);
+                    } else if (c == 4) {
+                        setHorizontalAlignment(SwingConstants.RIGHT);
+                        comp.setForeground(AppColors.SUCCESS);
+                        setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    } else if (c == 2) {
+                        setHorizontalAlignment(SwingConstants.LEFT);
+                        comp.setForeground(AppColors.PRIMARY);
+                        setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    } else if (c == 6) {
+                        setHorizontalAlignment(SwingConstants.LEFT);
+                        comp.setForeground(new Color(0x17, 0xA2, 0xB8));
+                        setFont(new Font("Segoe UI", Font.BOLD, 12));
+                    } else {
+                        setHorizontalAlignment(SwingConstants.LEFT);
+                        if (!sel) comp.setForeground(AppColors.TEXT_PRIMARY);
+                    }
+                    return comp;
+                }
+            });
+
+            // RowSorter for filtering
+            javax.swing.table.TableRowSorter<DefaultTableModel> sorter =
+                    new javax.swing.table.TableRowSorter<>(model);
+            salesTable.setRowSorter(sorter);
+
+            // Search listener — filter by column 2 (So Lo)
+            txtSearchLo.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+                private void doFilter() {
+                    String text = txtSearchLo.getText().trim();
+                    if (text.isEmpty() || text.equals(PLACEHOLDER)) {
+                        sorter.setRowFilter(null);
+                        lblCount.setText(model.getRowCount() + " hóa đơn");
+                    } else {
+                        sorter.setRowFilter(javax.swing.RowFilter.regexFilter(
+                                "(?i)" + java.util.regex.Pattern.quote(text), 2));
+                        lblCount.setText(salesTable.getRowCount() + " / " + model.getRowCount() + " hóa đơn");
+                    }
+                }
+                @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { doFilter(); }
+                @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { doFilter(); }
+                @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { doFilter(); }
+            });
+
+            JScrollPane sp = new JScrollPane(salesTable);
+            sp.setBorder(BorderFactory.createEmptyBorder());
+            sp.getViewport().setBackground(Color.WHITE);
+            content.add(sp, BorderLayout.CENTER);
+        }
+
+        dlg.setContentPane(content);
+        dlg.setVisible(true);
     }
 }

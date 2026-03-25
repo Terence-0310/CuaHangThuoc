@@ -80,13 +80,15 @@ public class InventoryPanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(AppColors.NEUTRAL);
         initComponents();
-        loadPage(1);
 
-        // ★ Khi panel được hiển thị (chuyển tab) → reload để adjustRowHeight tính đúng
+        // ★ invokeLater: đảm bảo UI layout xong rồi mới load data
+        SwingUtilities.invokeLater(() -> loadPage(1));
+
+        // ★ Khi panel được hiển thị (chuyển sidebar) → reload
         addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(ComponentEvent e) {
-                loadPage(currentPage);
+                SwingUtilities.invokeLater(() -> loadPage(currentPage));
             }
         });
     }
@@ -96,6 +98,15 @@ public class InventoryPanel extends JPanel {
     // ================================================================
 
     private void initComponents() {
+        // ★ JTabbedPane: Quản Lý Kho | Lịch sử Trả hàng | Lịch sử Hủy hàng
+        JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabbedPane.setBackground(Color.WHITE);
+
+        // ---- TAB 1: Quản Lý Kho (existing content) ----
+        JPanel tab1 = new JPanel(new BorderLayout());
+        tab1.setBackground(AppColors.NEUTRAL);
+
         // === TOP BAR ===
         JPanel topBar = new JPanel(new BorderLayout(12, 0));
         topBar.setBackground(Color.WHITE);
@@ -139,7 +150,7 @@ public class InventoryPanel extends JPanel {
         filterPanel.add(lblSearch);
         filterPanel.add(txtSearch);
         topBar.add(filterPanel, BorderLayout.EAST);
-        add(topBar, BorderLayout.NORTH);
+        tab1.add(topBar, BorderLayout.NORTH);
 
         // === CENTER: JSplitPane ===
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
@@ -156,7 +167,25 @@ public class InventoryPanel extends JPanel {
         // Right: Table + Pagination
         splitPane.setRightComponent(createTablePanel());
 
-        add(splitPane, BorderLayout.CENTER);
+        tab1.add(splitPane, BorderLayout.CENTER);
+
+        tabbedPane.addTab("Quản Lý Kho", tab1);
+
+        // ---- TAB 2: Lịch sử Trả hàng ----
+        tabbedPane.addTab("Lịch sử Trả hàng", createHistoryTab(true));
+
+        // ---- TAB 3: Lịch sử Hủy hàng ----
+        tabbedPane.addTab("Lịch sử Hủy hàng", createHistoryTab(false));
+
+        // ★ Auto-refresh ALL tabs khi chọn (bao gồm tab 0)
+        tabbedPane.addChangeListener(e -> {
+            int idx = tabbedPane.getSelectedIndex();
+            if (idx == 0) loadPage(currentPage);
+            else if (idx == 1) refreshHistoryTab(tabbedPane, 1, true);
+            else if (idx == 2) refreshHistoryTab(tabbedPane, 2, false);
+        });
+
+        add(tabbedPane, BorderLayout.CENTER);
 
         // === EVENTS ===
         javax.swing.Timer searchTimer = new javax.swing.Timer(400, e -> loadPage(1));
@@ -167,6 +196,141 @@ public class InventoryPanel extends JPanel {
             public void changedUpdate(javax.swing.event.DocumentEvent e) {}
         });
         cboStatus.addActionListener(e -> loadPage(1));
+    }
+
+    // ================================================================
+    //  HISTORY TAB (Trả hàng / Hủy hàng)
+    // ================================================================
+
+    private JPanel createHistoryTab(boolean isReturn) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+
+        // Header
+        Color accent = isReturn ? new Color(0x17, 0xA2, 0xB8) : AppColors.DANGER;
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(accent);
+        header.setBorder(new EmptyBorder(14, 24, 14, 24));
+        JLabel lbl = new JLabel(isReturn ? "Lịch Sử Trả Hàng NCC" : "Lịch Sử Hủy Hàng");
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        lbl.setForeground(Color.WHITE);
+        header.add(lbl, BorderLayout.WEST);
+        panel.add(header, BorderLayout.NORTH);
+
+        // Table
+        String[] cols;
+        if (isReturn) {
+            cols = new String[]{"Mã", "Số Lô", "Tên SP", "SL Trả", "Giá Nhập Lô",
+                    "Tiền Hoàn", "Hình Thức", "Tình Trạng", "Ghi Chú", "Người TH", "Ngày Trả"};
+        } else {
+            cols = new String[]{"Mã", "Số Lô", "Tên SP", "SL Hủy", "Giá Nhập Lô",
+                    "Thiệt Hại", "Phân Loại", "Ghi Chú", "Người TH", "Ngày Hủy"};
+        }
+
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        JTable histTable = new JTable(model);
+        histTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        histTable.setRowHeight(30);
+        histTable.setShowGrid(false);
+        histTable.setFillsViewportHeight(true);
+        histTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        histTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+        histTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+        histTable.setAutoCreateRowSorter(true);
+
+        JScrollPane sp = new JScrollPane(histTable);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        panel.add(sp, BorderLayout.CENTER);
+
+        // Store model for refresh
+        panel.putClientProperty("histModel", model);
+        panel.putClientProperty("isReturn", isReturn);
+
+        // Initial load
+        loadHistoryData(model, isReturn);
+
+        return panel;
+    }
+
+    private void refreshHistoryTab(JTabbedPane tabs, int tabIdx, boolean isReturn) {
+        JPanel panel = (JPanel) tabs.getComponentAt(tabIdx);
+        DefaultTableModel model = (DefaultTableModel) panel.getClientProperty("histModel");
+        if (model != null) {
+            loadHistoryData(model, isReturn);
+        }
+    }
+
+    private void loadHistoryData(DefaultTableModel model, boolean isReturn) {
+        model.setRowCount(0);
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,##0");
+
+        String sql;
+        if (isReturn) {
+            sql = "SELECT t.MaTra, l.SoLo, sp.TenSP, t.SoLuongTra, t.GiaNhapLo, " +
+                  "t.TongTienHoan, t.HinhThucHoan, " +
+                  "ISNULL(t.TinhTrang, N'---') AS TinhTrang, " +
+                  "ISNULL(t.GhiChu, ISNULL(t.LyDo, N'')) AS GhiChu, " +
+                  "nd.HoTen, t.NgayTra " +
+                  "FROM TraHangNCC t " +
+                  "JOIN LoHang l ON t.MaLo = l.MaLo " +
+                  "JOIN SanPham sp ON t.MaSP = sp.MaSP " +
+                  "JOIN NguoiDung nd ON t.MaND = nd.MaND " +
+                  "ORDER BY t.NgayTra DESC";
+        } else {
+            sql = "SELECT h.MaHuy, l.SoLo, sp.TenSP, h.SoLuongHuy, h.GiaNhapLo, " +
+                  "h.TongThietHai, h.PhanLoaiLyDo, h.ChiTietLyDo, nd.HoTen, h.NgayHuy " +
+                  "FROM HuyHang h " +
+                  "JOIN LoHang l ON h.MaLo = l.MaLo " +
+                  "JOIN SanPham sp ON h.MaSP = sp.MaSP " +
+                  "JOIN NguoiDung nd ON h.MaND = nd.MaND " +
+                  "ORDER BY h.NgayHuy DESC";
+        }
+
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Timestamp ngay = rs.getTimestamp(isReturn ? "NgayTra" : "NgayHuy");
+                String ngayStr = ngay != null
+                        ? ngay.toLocalDateTime().format(
+                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        : "---";
+
+                if (isReturn) {
+                    model.addRow(new Object[]{
+                        rs.getInt("MaTra"),
+                        rs.getNString("SoLo"),
+                        rs.getNString("TenSP"),
+                        rs.getInt("SoLuongTra"),
+                        fmt.format(rs.getLong("GiaNhapLo")) + " VNĐ",
+                        fmt.format(rs.getLong("TongTienHoan")) + " VNĐ",
+                        rs.getNString("HinhThucHoan"),
+                        rs.getNString("TinhTrang"),
+                        rs.getNString("GhiChu"),
+                        rs.getNString("HoTen"),
+                        ngayStr
+                    });
+                } else {
+                    model.addRow(new Object[]{
+                        rs.getInt("MaHuy"),
+                        rs.getNString("SoLo"),
+                        rs.getNString("TenSP"),
+                        rs.getInt("SoLuongHuy"),
+                        fmt.format(rs.getLong("GiaNhapLo")) + " VNĐ",
+                        fmt.format(rs.getLong("TongThietHai")) + " VNĐ",
+                        rs.getNString("PhanLoaiLyDo"),
+                        rs.getNString("ChiTietLyDo"),
+                        rs.getNString("HoTen"),
+                        ngayStr
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            // Tables might not exist — show empty
+        }
     }
 
     // ================================================================
@@ -336,6 +500,48 @@ public class InventoryPanel extends JPanel {
         // Row selection → fill form
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) onRowSelected();
+        });
+
+        // ★ RIGHT-CLICK CONTEXT MENU: Trả hàng NCC / Hủy hàng
+        JPopupMenu popupMenu = new JPopupMenu();
+
+        JMenuItem menuReturn = new JMenuItem("Trả hàng NCC");
+        menuReturn.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        menuReturn.addActionListener(e -> openBatchActionDialog(
+                presentation.dialog.BatchActionDialog.ActionType.RETURN));
+
+        JMenuItem menuDestroy = new JMenuItem("Hủy hàng");
+        menuDestroy.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        menuDestroy.setForeground(AppColors.DANGER);
+        menuDestroy.addActionListener(e -> openBatchActionDialog(
+                presentation.dialog.BatchActionDialog.ActionType.DESTROY));
+
+        JMenuItem menuHistory = new JMenuItem("Xem lịch sử trả/hủy");
+        menuHistory.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        menuHistory.setForeground(new Color(0x6C, 0x75, 0x7D));
+        menuHistory.addActionListener(e -> showBatchHistory());
+
+        popupMenu.add(menuReturn);
+        popupMenu.add(menuDestroy);
+        popupMenu.addSeparator();
+        popupMenu.add(menuHistory);
+
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) { handlePopup(e); }
+            @Override
+            public void mouseReleased(MouseEvent e) { handlePopup(e); }
+            private void handlePopup(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    int row = table.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        table.setRowSelectionInterval(row, row);
+                        if (Session.isAdmin()) {
+                            popupMenu.show(table, e.getX(), e.getY());
+                        }
+                    }
+                }
+            }
         });
 
         JScrollPane scrollPane = new JScrollPane(table);
@@ -666,18 +872,37 @@ public class InventoryPanel extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
 
         try (Connection conn = DatabaseHelper.getConnection()) {
-            try (PreparedStatement check = conn.prepareStatement(
-                    "SELECT COUNT(*) FROM ChiTietHoaDon WHERE MaLo = ?")) {
-                check.setInt(1, selectedMaLo);
-                try (ResultSet rs = check.executeQuery()) {
-                    rs.next();
-                    if (rs.getInt(1) > 0) {
-                        showWarning("Không thể xóa!\nLô hàng này đã được bán trong hóa đơn.\nHãy đặt số lượng về 0 thay vì xóa.");
-                        return;
+            // ★ Check ALL tables that reference LoHang.MaLo (ChiTietHoaDon, ChiTietGiemKho, etc.)
+            String checkAllFKs =
+                "SELECT t.name AS TableName " +
+                "FROM sys.foreign_key_columns fkc " +
+                "JOIN sys.tables t ON fkc.parent_object_id = t.object_id " +
+                "JOIN sys.columns c ON fkc.parent_object_id = c.object_id AND fkc.parent_column_id = c.column_id " +
+                "WHERE fkc.referenced_object_id = OBJECT_ID('LoHang') " +
+                "AND c.name = 'MaLo'";
+
+            try (PreparedStatement ps = conn.prepareStatement(checkAllFKs);
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String refTable = rs.getString("TableName");
+                    // Check if any rows reference this MaLo in that table
+                    String countSql = "SELECT COUNT(*) FROM [" + refTable + "] WHERE MaLo = ?";
+                    try (PreparedStatement countPs = conn.prepareStatement(countSql)) {
+                        countPs.setInt(1, selectedMaLo);
+                        try (ResultSet countRs = countPs.executeQuery()) {
+                            countRs.next();
+                            if (countRs.getInt(1) > 0) {
+                                showWarning("Không thể xóa!\n" +
+                                    "Lô hàng này đang được tham chiếu bởi bảng \"" + refTable + "\".\n" +
+                                    "Hãy đặt số lượng về 0 thay vì xóa.");
+                                return;
+                            }
+                        }
                     }
                 }
             }
 
+            // Safe to delete — no FK references
             try (PreparedStatement ps = conn.prepareStatement("DELETE FROM LoHang WHERE MaLo = ?")) {
                 ps.setInt(1, selectedMaLo);
                 int affected = ps.executeUpdate();
@@ -692,6 +917,237 @@ public class InventoryPanel extends JPanel {
         } catch (SQLException e) {
             showError("Lỗi xóa:\n" + e.getMessage());
         }
+    }
+
+    /**
+     * ★ Mở modal Trả hàng NCC / Hủy hàng cho lô đang chọn
+     */
+    private void openBatchActionDialog(presentation.dialog.BatchActionDialog.ActionType type) {
+        int row = table.getSelectedRow();
+        if (row < 0) { showWarning("Vui lòng chọn lô hàng!"); return; }
+
+        String soLo = safeStr(tableModel.getValueAt(row, 1));
+        String tenSP = safeStr(tableModel.getValueAt(row, 2));
+        Object slObj = tableModel.getValueAt(row, 4);
+        int tonKho = 0;
+        try {
+            tonKho = (slObj instanceof Integer) ? (int) slObj : Integer.parseInt(slObj.toString().replace(",", ""));
+        } catch (Exception ignored) {}
+
+        if (tonKho <= 0) {
+            showWarning("Lô hàng này đã hết tồn kho (SL = 0).\nKhông cần trả/hủy.");
+            return;
+        }
+
+        // ★ Query MaLo, MaSP, GiaNhap, TenNCC, SoLuongGoc from DB
+        int maLo = -1, maSP = -1;
+        long giaNhapLo = 0;
+        int soLuongGoc = tonKho; // fallback
+        String tenNCC = "---";
+
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT l.MaLo, l.MaSP, l.GiaNhap, l.SoLuong, " +
+                     "ISNULL(ncc.TenNCC, N'---') AS TenNCC, " +
+                     // SoLuongGoc = current + đã bán + đã trả + đã hủy
+                     "(l.SoLuong " +
+                     " + ISNULL((SELECT SUM(SoLuong) FROM ChiTietHoaDon WHERE MaLo = l.MaLo), 0)" +
+                     " + ISNULL((SELECT SUM(SoLuongTra) FROM TraHangNCC WHERE MaLo = l.MaLo), 0)" +
+                     " + ISNULL((SELECT SUM(SoLuongHuy) FROM HuyHang WHERE MaLo = l.MaLo), 0)" +
+                     ") AS SoLuongGoc " +
+                     "FROM LoHang l " +
+                     "JOIN SanPham sp ON l.MaSP = sp.MaSP " +
+                     "LEFT JOIN PhieuNhap p ON l.MaPN = p.MaPN " +
+                     "LEFT JOIN NhaCungCap ncc ON p.MaNCC = ncc.MaNCC " +
+                     "WHERE l.SoLo = ? AND sp.TenSP = ?")) {
+            ps.setNString(1, soLo);
+            ps.setNString(2, tenSP);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    maLo = rs.getInt("MaLo");
+                    maSP = rs.getInt("MaSP");
+                    java.math.BigDecimal gn = rs.getBigDecimal("GiaNhap");
+                    giaNhapLo = gn != null ? gn.longValue() : 0;
+                    soLuongGoc = rs.getInt("SoLuongGoc");
+                    if (soLuongGoc <= 0) soLuongGoc = tonKho; // safety
+                    tenNCC = rs.getNString("TenNCC");
+                }
+            }
+        } catch (SQLException e) {
+            showError("Lỗi truy vấn lô hàng:\n" + e.getMessage());
+            return;
+        }
+
+        if (maLo < 0) {
+            showError("Không tìm thấy lô hàng trong DB!");
+            return;
+        }
+
+        // Open modal
+        presentation.dialog.BatchActionDialog dialog =
+                new presentation.dialog.BatchActionDialog(
+                        SwingUtilities.getWindowAncestor(this),
+                        type, maLo, maSP, tenSP, soLo, tonKho,
+                        giaNhapLo, soLuongGoc, tenNCC);
+        dialog.setVisible(true);
+
+        // Refresh if confirmed
+        if (dialog.isConfirmed()) {
+            clearForm();
+            loadPage(currentPage);
+        }
+    }
+
+    private String safeStr(Object obj) {
+        return obj != null ? obj.toString() : "";
+    }
+
+    /**
+     * ★ Xem lịch sử trả/hủy của lô đang chọn
+     */
+    private void showBatchHistory() {
+        int row = table.getSelectedRow();
+        if (row < 0) { showWarning("Vui lòng chọn lô hàng!"); return; }
+
+        String soLo = safeStr(tableModel.getValueAt(row, 1));
+        String tenSP = safeStr(tableModel.getValueAt(row, 2));
+
+        // Resolve MaLo
+        int maLo = -1;
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "SELECT l.MaLo FROM LoHang l JOIN SanPham sp ON l.MaSP = sp.MaSP " +
+                 "WHERE l.SoLo = ? AND sp.TenSP = ?")) {
+            ps.setNString(1, soLo);
+            ps.setNString(2, tenSP);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) maLo = rs.getInt("MaLo");
+            }
+        } catch (SQLException e) { showError("Lỗi: " + e.getMessage()); return; }
+
+        if (maLo < 0) { showError("Không tìm thấy lô hàng!"); return; }
+
+        // Query history: UNION ALL from TraHangNCC + HuyHang
+        String sql =
+            "SELECT N'Trả hàng NCC' AS Loai, t.SoLuongTra AS SoLuong, " +
+            "t.TongTienHoan AS SoTien, t.HinhThucHoan AS PhanLoai, " +
+            "t.LyDo, nd.HoTen AS NguoiThucHien, t.NgayTra AS Ngay " +
+            "FROM TraHangNCC t " +
+            "JOIN NguoiDung nd ON t.MaND = nd.MaND " +
+            "WHERE t.MaLo = ? " +
+            "UNION ALL " +
+            "SELECT N'Hủy hàng', h.SoLuongHuy, h.TongThietHai, h.PhanLoaiLyDo, " +
+            "h.ChiTietLyDo, nd.HoTen, h.NgayHuy " +
+            "FROM HuyHang h " +
+            "JOIN NguoiDung nd ON h.MaND = nd.MaND " +
+            "WHERE h.MaLo = ? " +
+            "ORDER BY Ngay DESC";
+
+        // Build table
+        String[] cols = {"Loại", "SL", "Số tiền", "Phân loại", "Lý do", "Người TH", "Ngày"};
+        javax.swing.table.DefaultTableModel histModel = new javax.swing.table.DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        java.text.DecimalFormat moneyFmt = new java.text.DecimalFormat("#,##0");
+
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maLo);
+            ps.setInt(2, maLo);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long soTien = rs.getLong("SoTien");
+                    Timestamp ngay = rs.getTimestamp("Ngay");
+                    String ngayStr = ngay != null
+                            ? ngay.toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+                            : "---";
+                    histModel.addRow(new Object[]{
+                        rs.getNString("Loai"),
+                        rs.getInt("SoLuong"),
+                        moneyFmt.format(soTien) + " VNĐ",
+                        rs.getNString("PhanLoai"),
+                        rs.getNString("LyDo"),
+                        rs.getNString("NguoiThucHien"),
+                        ngayStr
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            // Tables might not exist yet
+            // Silent — just show empty
+        }
+
+        // Create dialog
+        JDialog dlg = new JDialog(SwingUtilities.getWindowAncestor(this),
+                "Lịch sử Trả/Hủy — " + soLo + " (" + tenSP + ")",
+                JDialog.DEFAULT_MODALITY_TYPE);
+        dlg.setSize(750, 400);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel content = new JPanel(new BorderLayout(0, 0));
+        content.setBackground(Color.WHITE);
+
+        // Header
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(0x1B, 0x3A, 0x5C));
+        header.setBorder(new EmptyBorder(12, 20, 12, 20));
+        JLabel lblH = new JLabel("📋  Lịch sử xử lý lô " + soLo);
+        lblH.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblH.setForeground(Color.WHITE);
+        header.add(lblH, BorderLayout.WEST);
+        JLabel lblCount = new JLabel(histModel.getRowCount() + " bản ghi");
+        lblCount.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCount.setForeground(new Color(200, 200, 200));
+        header.add(lblCount, BorderLayout.EAST);
+        content.add(header, BorderLayout.NORTH);
+
+        // Table
+        JTable histTable = new JTable(histModel);
+        histTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        histTable.setRowHeight(28);
+        histTable.setShowGrid(false);
+        histTable.setFillsViewportHeight(true);
+        histTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        histTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+        histTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+
+        // Color rows
+        histTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object val,
+                    boolean sel, boolean focus, int r, int c) {
+                Component comp = super.getTableCellRendererComponent(t, val, sel, focus, r, c);
+                if (!sel) {
+                    String loai = safeStr(histModel.getValueAt(r, 0));
+                    if (loai.contains("Trả")) {
+                        comp.setBackground(new Color(0xD4, 0xED, 0xDA));
+                        if (c == 0) comp.setForeground(new Color(0x17, 0xA2, 0xB8));
+                        else comp.setForeground(AppColors.TEXT_PRIMARY);
+                    } else {
+                        comp.setBackground(new Color(0xF8, 0xD7, 0xDA));
+                        if (c == 0) comp.setForeground(AppColors.DANGER);
+                        else comp.setForeground(AppColors.TEXT_PRIMARY);
+                    }
+                }
+                return comp;
+            }
+        });
+
+        JScrollPane sp = new JScrollPane(histTable);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        content.add(sp, BorderLayout.CENTER);
+
+        // Empty state
+        if (histModel.getRowCount() == 0) {
+            JLabel lblEmpty = new JLabel("Chưa có lịch sử trả/hủy nào cho lô này.", SwingConstants.CENTER);
+            lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            lblEmpty.setForeground(AppColors.TEXT_SECONDARY);
+            content.add(lblEmpty, BorderLayout.CENTER);
+        }
+
+        dlg.setContentPane(content);
+        dlg.setVisible(true);
     }
 
     private void clearForm() {
