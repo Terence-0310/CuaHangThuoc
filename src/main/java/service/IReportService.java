@@ -1,17 +1,13 @@
 package service;
 
-import domain.dto.RevenueDTO;
-import domain.dto.TopCustomerDTO;
-import domain.dto.TopSellingDTO;
-import domain.entity.Batch;
+import domain.dto.*;
 import java.util.List;
 
-/**
- * Service Interface: Dashboard & Báo cáo
- */
 public interface IReportService {
-    RevenueDTO getRevenue();
-    List<Batch> getExpiringBatches();
-    List<TopSellingDTO> getTopSelling(int topN);
-    List<TopCustomerDTO> getTopCustomers(int topN);
+    List<Integer> getAvailableYears();
+    BusinessMetricDTO getKPIs(int year, int quarter);
+    List<TopSellingDTO> getTopProducts(int year, int quarter);
+    List<TopCustomerDTO> getTopCustomers(int year, int quarter);
+    List<TopSupplierDTO> getTopSuppliers(int year, int quarter);
+    List<StockAlertDTO> getStockAlerts();
 }

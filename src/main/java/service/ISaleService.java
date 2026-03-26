@@ -8,4 +8,6 @@ import java.util.List;
  */
 public interface ISaleService {
     int checkout(List<CartItem> cart, String soDT, String tenKH, String phuongThucTT);
+    List<Object[]> searchProductsForSale(String keyword);
+    domain.entity.Customer findCustomerByPhone(String phone);
 }

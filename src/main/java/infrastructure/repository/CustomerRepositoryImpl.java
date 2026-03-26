@@ -1,5 +1,6 @@
 package infrastructure.repository;
 
+import domain.dto.CustomerPurchaseHistoryDTO;
 import domain.entity.Customer;
 import domain.repository.ICustomerRepository;
 import infrastructure.database.DatabaseHelper;
@@ -207,6 +208,37 @@ public class CustomerRepositoryImpl implements ICustomerRepository {
             throw new RuntimeException("Lỗi đếm KhachHang", e);
         }
         return 0;
+    }
+
+    @Override
+    public List<CustomerPurchaseHistoryDTO> getCustomerPurchaseHistory(int maKH) {
+        String sql = "SELECT hd.MaHD, hd.NgayBan, hd.TongTien, " +
+                     "COUNT(ct.MaSP) AS SoSP, nd.HoTen AS NhanVien " +
+                     "FROM HoaDon hd " +
+                     "JOIN NguoiDung nd ON hd.MaND = nd.MaND " +
+                     "LEFT JOIN ChiTietHoaDon ct ON hd.MaHD = ct.MaHD " +
+                     "WHERE hd.MaKH = ? " +
+                     "GROUP BY hd.MaHD, hd.NgayBan, hd.TongTien, nd.HoTen " +
+                     "ORDER BY hd.NgayBan DESC";
+        List<CustomerPurchaseHistoryDTO> list = new ArrayList<>();
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maKH);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new CustomerPurchaseHistoryDTO(
+                            rs.getInt("MaHD"),
+                            rs.getTimestamp("NgayBan").toLocalDateTime(),
+                            rs.getBigDecimal("TongTien"),
+                            rs.getInt("SoSP"),
+                            rs.getNString("NhanVien")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi truy vấn lịch sử mua hàng", e);
+        }
+        return list;
     }
 
     // === Private helpers ===

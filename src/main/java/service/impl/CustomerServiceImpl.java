@@ -71,4 +71,9 @@ public class CustomerServiceImpl implements ICustomerService {
     public int countFiltered(String keyword) {
         return customerRepo.countFiltered(keyword);
     }
+    
+    @Override
+    public java.util.List<domain.dto.CustomerPurchaseHistoryDTO> getCustomerPurchaseHistory(int maKH) {
+        return customerRepo.getCustomerPurchaseHistory(maKH);
+    }
 }

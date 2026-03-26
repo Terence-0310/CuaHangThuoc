@@ -14,4 +14,11 @@ public interface ISupplierService {
     List<Supplier> getAll();
     List<Supplier> getActive();
     List<Supplier> search(String keyword);
+    List<Supplier> getPagedList(int offset, int pageSize, String keyword, String statusFilter, String sortCol, String sortDir);
+    int countFiltered(String keyword, String statusFilter);
+
+    // Clean Arch: Data access cho SupplierDetailDialog
+    List<Object[]> getSupplierDetail(int maNCC);
+    List<Object[]> getImportTickets(int maNCC);
+    List<Object[]> getSupplierBatches(int maNCC);
 }

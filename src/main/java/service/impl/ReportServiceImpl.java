@@ -1,41 +1,45 @@
 package service.impl;
 
-import domain.dto.RevenueDTO;
-import domain.dto.TopCustomerDTO;
-import domain.dto.TopSellingDTO;
-import domain.entity.Batch;
+import domain.dto.*;
 import domain.repository.IReportRepository;
 import service.IReportService;
+
 import java.util.List;
 
-/**
- * Service Impl: Dashboard & Báo cáo (SRP + DIP)
- */
 public class ReportServiceImpl implements IReportService {
+    private final IReportRepository repository;
 
-    private final IReportRepository reportRepo;
-
-    public ReportServiceImpl(IReportRepository reportRepo) {
-        this.reportRepo = reportRepo;
+    public ReportServiceImpl(IReportRepository repository) {
+        this.repository = repository;
     }
 
     @Override
-    public RevenueDTO getRevenue() {
-        return reportRepo.getRevenue();
+    public List<Integer> getAvailableYears() {
+        return repository.getAvailableYears();
     }
 
     @Override
-    public List<Batch> getExpiringBatches() {
-        return reportRepo.getExpiringBatches();
+    public BusinessMetricDTO getKPIs(int year, int quarter) {
+        return repository.getKPIs(year, quarter);
     }
 
     @Override
-    public List<TopSellingDTO> getTopSelling(int topN) {
-        return reportRepo.getTopSelling(topN);
+    public List<TopSellingDTO> getTopProducts(int year, int quarter) {
+        return repository.getTopProducts(year, quarter);
     }
 
     @Override
-    public List<TopCustomerDTO> getTopCustomers(int topN) {
-        return reportRepo.getTopCustomers(topN);
+    public List<TopCustomerDTO> getTopCustomers(int year, int quarter) {
+        return repository.getTopCustomers(year, quarter);
+    }
+
+    @Override
+    public List<TopSupplierDTO> getTopSuppliers(int year, int quarter) {
+        return repository.getTopSuppliers(year, quarter);
+    }
+
+    @Override
+    public List<StockAlertDTO> getStockAlerts() {
+        return repository.getStockAlerts();
     }
 }

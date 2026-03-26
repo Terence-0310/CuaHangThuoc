@@ -131,4 +131,51 @@ public class SaleServiceImpl implements ISaleService {
 
         return remaining <= 0;
     }
+
+    @Override
+    public List<Object[]> searchProductsForSale(String keyword) {
+        List<Object[]> result = new java.util.ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+            "SELECT sp.MaSP, sp.TenSP, sp.DonViTinh, sp.GiaBan, " +
+            "ISNULL(tk.TongTon, 0) AS TonKho " +
+            "FROM SanPham sp " +
+            "LEFT JOIN (SELECT MaSP, SUM(SoLuong) AS TongTon FROM LoHang " +
+            "           WHERE SoLuong > 0 AND HanSuDung > GETDATE() GROUP BY MaSP) tk " +
+            "ON sp.MaSP = tk.MaSP " +
+            "WHERE sp.TrangThai = 1 AND ISNULL(tk.TongTon, 0) > 0 ");
+        if (keyword != null) {
+            sql.append("AND sp.TenSP LIKE ? ");
+        }
+        sql.append("ORDER BY sp.TenSP");
+
+        java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,###");
+        try (Connection conn = DatabaseHelper.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            if (keyword != null) {
+                ps.setNString(1, "%" + keyword + "%");
+            }
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.math.BigDecimal gia = rs.getBigDecimal("GiaBan");
+                    result.add(new Object[]{
+                        rs.getInt("MaSP"),
+                        rs.getNString("TenSP"),
+                        rs.getNString("DonViTinh"),
+                        gia != null ? fmt.format(gia) + " ₫" : "---",
+                        rs.getInt("TonKho")
+                    });
+                }
+            }
+        } catch (SQLException ignored) {}
+        return result;
+    }
+
+    @Override
+    public Customer findCustomerByPhone(String phone) {
+        try (Connection conn = DatabaseHelper.getConnection()) {
+            return customerRepo.findByPhone(conn, phone);
+        } catch (SQLException e) {
+            return null;
+        }
+    }
 }

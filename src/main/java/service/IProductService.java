@@ -1,6 +1,7 @@
 package service;
 
 import domain.entity.Product;
+import domain.entity.Batch;
 import java.util.List;
 
 /**
@@ -20,4 +21,8 @@ public interface IProductService {
     boolean update(Product product);
     boolean softDelete(int maSP);
     int bulkUpdateStatus(List<Integer> ids, boolean trangThai);
+
+    // Clean Arch: Data access cho dialog ProductDetail & ProductPanel.showSalesHistory
+    List<Batch> getBatchesByProduct(int maSP);
+    List<Object[]> getSalesHistoryByProduct(int maSP);
 }

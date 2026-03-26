@@ -56,4 +56,8 @@ public class ServiceFactory {
     public static ISupplierService getSupplierService() {
         return new SupplierServiceImpl(supplierRepo);
     }
+
+    public static IUserService getUserService() {
+        return new UserServiceImpl(userRepo);
+    }
 }

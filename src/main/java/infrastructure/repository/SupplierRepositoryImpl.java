@@ -113,6 +113,88 @@ public class SupplierRepositoryImpl implements ISupplierRepository {
         return list;
     }
 
+    @Override
+    public List<Supplier> getPagedList(int offset, int pageSize, String keyword,
+                                        String statusFilter, String sortCol, String sortDir) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT * FROM NhaCungCap WHERE 1=1 ");
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append("AND (TenNCC LIKE ? OR SoDT LIKE ? OR Email LIKE ?) ");
+        }
+        if ("active".equalsIgnoreCase(statusFilter)) {
+            sql.append("AND TrangThai = 1 ");
+        } else if ("inactive".equalsIgnoreCase(statusFilter)) {
+            sql.append("AND TrangThai = 0 ");
+        }
+        String safeCol = mapSortColumn(sortCol);
+        String safeDir = "DESC".equalsIgnoreCase(sortDir) ? "DESC" : "ASC";
+        sql.append("ORDER BY ").append(safeCol).append(" ").append(safeDir);
+        if (!"MaNCC".equals(safeCol)) sql.append(", MaNCC ASC");
+        sql.append(" OFFSET ? ROWS FETCH NEXT ? ROWS ONLY");
+
+        List<Supplier> list = new ArrayList<>();
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String kw = "%" + keyword.trim() + "%";
+                ps.setNString(idx++, kw);
+                ps.setString(idx++, kw);
+                ps.setString(idx++, kw);
+            }
+            ps.setInt(idx++, offset);
+            ps.setInt(idx, pageSize);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi phân trang NCC", e);
+        }
+        return list;
+    }
+
+    @Override
+    public int countFiltered(String keyword, String statusFilter) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(1) FROM NhaCungCap WHERE 1=1 ");
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append("AND (TenNCC LIKE ? OR SoDT LIKE ? OR Email LIKE ?) ");
+        }
+        if ("active".equalsIgnoreCase(statusFilter)) {
+            sql.append("AND TrangThai = 1 ");
+        } else if ("inactive".equalsIgnoreCase(statusFilter)) {
+            sql.append("AND TrangThai = 0 ");
+        }
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                String kw = "%" + keyword.trim() + "%";
+                ps.setNString(idx++, kw);
+                ps.setString(idx++, kw);
+                ps.setString(idx, kw);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi đếm NCC", e);
+        }
+        return 0;
+    }
+
+    private String mapSortColumn(String uiCol) {
+        if (uiCol == null) return "MaNCC";
+        switch (uiCol) {
+            case "MaNCC":     return "MaNCC";
+            case "TenNCC":    return "TenNCC";
+            case "SoDT":      return "SoDT";
+            case "Email":     return "Email";
+            case "TrangThai": return "TrangThai";
+            case "NgayTao":   return "NgayTao";
+            default:          return "MaNCC";
+        }
+    }
+
     private Supplier mapRow(ResultSet rs) throws SQLException {
         Supplier s = new Supplier();
         s.setMaNCC(rs.getInt("MaNCC"));
@@ -125,3 +207,4 @@ public class SupplierRepositoryImpl implements ISupplierRepository {
         return s;
     }
 }
+

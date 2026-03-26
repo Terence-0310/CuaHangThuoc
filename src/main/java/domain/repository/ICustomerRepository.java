@@ -1,5 +1,6 @@
 package domain.repository;
 
+import domain.dto.CustomerPurchaseHistoryDTO;
 import domain.entity.Customer;
 import java.sql.Connection;
 import java.util.List;
@@ -19,4 +20,7 @@ public interface ICustomerRepository {
     List<Customer> search(String keyword);
     List<Customer> getPagedList(int offset, int pageSize, String keyword, String sortCol, String sortDir);
     int countFiltered(String keyword);
+
+    /** Lịch sử mua hàng của khách */
+    List<CustomerPurchaseHistoryDTO> getCustomerPurchaseHistory(int maKH);
 }
