@@ -1,7 +1,6 @@
 package presentation.panel;
 
 import common.AppColors;
-import common.CurrencyFormatter;
 import common.ServiceFactory;
 import domain.dto.*;
 import service.IReportService;

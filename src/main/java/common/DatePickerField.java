@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class DatePickerField extends JPanel {
 
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 
     private final JTextField txtDate;
     private LocalDate selectedDate;

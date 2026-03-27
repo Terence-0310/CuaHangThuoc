@@ -8,8 +8,6 @@ import presentation.view.IImportView;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +23,6 @@ public class ImportPresenter {
     private final NhapKhoDAO nhapKhoDAO;
     private List<Product> productList = new ArrayList<>();
     private final List<ImportCartItem> cart = new ArrayList<>();
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public ImportPresenter(IImportView view, NhapKhoDAO nhapKhoDAO) {
         this.view = view;
@@ -106,11 +103,9 @@ public class ImportPresenter {
             return;
         }
 
-        LocalDate hsd;
-        try {
-            hsd = LocalDate.parse(view.getHanSuDungText().trim(), DATE_FMT);
-        } catch (DateTimeParseException e) {
-            view.showWarning("Hạn sử dụng không hợp lệ! (dd/MM/yyyy)");
+        LocalDate hsd = view.getHanSuDungDate();
+        if (hsd == null) {
+            view.showWarning("Vui lòng chọn hạn sử dụng!");
             return;
         }
         if (hsd.isBefore(LocalDate.now())) {
@@ -166,7 +161,8 @@ public class ImportPresenter {
         }
 
         // --- Thêm vào JTable ---
-        view.addCartRow(tenSP, dvt, soLo, hsd.format(DATE_FMT),
+        view.addCartRow(tenSP, dvt, soLo,
+                hsd.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy")),
                 soLuong, String.format("%,.0f", giaNhap));
 
         updateTotal();

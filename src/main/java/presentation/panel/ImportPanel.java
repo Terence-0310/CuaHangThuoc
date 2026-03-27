@@ -1,6 +1,7 @@
 package presentation.panel;
 
 import common.AppColors;
+import common.DatePickerField;
 import domain.entity.Product;
 import infrastructure.repository.NhapKhoDAO;
 import presentation.presenter.ImportPresenter;
@@ -41,7 +42,8 @@ public class ImportPanel extends JPanel implements IImportView {
     private JTextField txtTenSP, txtDVT, txtGiaBan;
 
     // Section 2: Lô hàng
-    private JTextField txtSoLo, txtHSD, txtSoLuong, txtGiaNhap;
+    private JTextField txtSoLo, txtSoLuong, txtGiaNhap;
+    private DatePickerField dpHSD;
 
     // Section 3: Giỏ
     private JTable cartTable;
@@ -184,10 +186,17 @@ public class ImportPanel extends JPanel implements IImportView {
         panel.add(cboNCC);
         panel.add(Box.createRigidArea(new Dimension(0, 8)));
 
-        txtHSD = new JTextField();
-        txtHSD.setToolTipText("dd/MM/yyyy (VD: 31/12/2027)");
-        addDateAutoSlash(txtHSD);
-        addFormField(panel, "Hạn sử dụng:", txtHSD);
+        dpHSD = new DatePickerField();
+        dpHSD.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        dpHSD.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel lblHSD = new JLabel("Hạn sử dụng:");
+        lblHSD.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblHSD.setForeground(AppColors.TEXT_SECONDARY);
+        lblHSD.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(lblHSD);
+        panel.add(Box.createRigidArea(new Dimension(0, 3)));
+        panel.add(dpHSD);
+        panel.add(Box.createRigidArea(new Dimension(0, 8)));
 
         txtSoLuong = new JTextField();
         addNumericFilter(txtSoLuong);
@@ -407,7 +416,12 @@ public class ImportPanel extends JPanel implements IImportView {
     @Override
     public String getSoLoText() { return txtSoLo.getText(); }
     @Override
-    public String getHanSuDungText() { return txtHSD.getText(); }
+    public String getHanSuDungText() {
+        java.time.LocalDate d = dpHSD.getDate();
+        return d != null ? d.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "";
+    }
+    @Override
+    public java.time.LocalDate getHanSuDungDate() { return dpHSD.getDate(); }
     @Override
     public String getGiaNhapText() { return txtGiaNhap.getText(); }
 
@@ -445,7 +459,7 @@ public class ImportPanel extends JPanel implements IImportView {
         txtDVT.setText("");
         txtGiaBan.setText("");
         txtSoLo.setText("");
-        txtHSD.setText("");
+        dpHSD.clear();
         txtSoLuong.setText("");
         txtGiaNhap.setText("");
     }

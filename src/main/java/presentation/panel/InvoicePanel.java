@@ -1,6 +1,7 @@
 package presentation.panel;
 
 import common.AppColors;
+import common.DatePickerField;
 import domain.entity.Invoice;
 import infrastructure.database.DatabaseHelper;
 
@@ -24,7 +25,7 @@ import java.time.format.DateTimeFormatter;
 public class InvoicePanel extends JPanel {
 
     private JTextField txtSearchKH, txtSearchMaHD;
-    private JTextField txtFromDate, txtToDate;
+    private DatePickerField dpFromDate, dpToDate;
     private JComboBox<String> cboTrangThai;
     private DefaultTableModel tableModel;
     private JTable table;
@@ -38,8 +39,7 @@ public class InvoicePanel extends JPanel {
     // Customer filter: 0 = all, 1 = registered, 2 = walk-in
     private int customerTypeFilter = 0;
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm");
 
     public InvoicePanel() {
         setLayout(new BorderLayout());
@@ -136,14 +136,14 @@ public class InvoicePanel extends JPanel {
         filterPanel.setBackground(Color.WHITE);
 
         filterPanel.add(makeFilterLabel("Từ ngày:"));
-        txtFromDate = makeFilterField(10);
-        txtFromDate.setToolTipText("dd/MM/yyyy");
-        filterPanel.add(txtFromDate);
+        dpFromDate = new DatePickerField();
+        dpFromDate.setPreferredSize(new Dimension(130, 28));
+        filterPanel.add(dpFromDate);
 
         filterPanel.add(makeFilterLabel("Đến ngày:"));
-        txtToDate = makeFilterField(10);
-        txtToDate.setToolTipText("dd/MM/yyyy");
-        filterPanel.add(txtToDate);
+        dpToDate = new DatePickerField();
+        dpToDate.setPreferredSize(new Dimension(130, 28));
+        filterPanel.add(dpToDate);
 
         filterPanel.add(makeFilterLabel("Khách hàng:"));
         txtSearchKH = makeFilterField(12);
@@ -401,21 +401,15 @@ public class InvoicePanel extends JPanel {
         java.util.List<Object> params = new java.util.ArrayList<>();
 
         // Date filter
-        String fromStr = txtFromDate.getText().trim();
-        if (!fromStr.isEmpty()) {
-            try {
-                LocalDate from = LocalDate.parse(fromStr, DATE_FMT);
-                where.append("AND hd.NgayBan >= ? ");
-                params.add(Timestamp.valueOf(from.atStartOfDay()));
-            } catch (Exception ignored) {}
+        LocalDate fromDate = dpFromDate.getDate();
+        if (fromDate != null) {
+            where.append("AND hd.NgayBan >= ? ");
+            params.add(Timestamp.valueOf(fromDate.atStartOfDay()));
         }
-        String toStr = txtToDate.getText().trim();
-        if (!toStr.isEmpty()) {
-            try {
-                LocalDate to = LocalDate.parse(toStr, DATE_FMT);
-                where.append("AND hd.NgayBan < ? ");
-                params.add(Timestamp.valueOf(to.plusDays(1).atStartOfDay()));
-            } catch (Exception ignored) {}
+        LocalDate toDate = dpToDate.getDate();
+        if (toDate != null) {
+            where.append("AND hd.NgayBan < ? ");
+            params.add(Timestamp.valueOf(toDate.plusDays(1).atStartOfDay()));
         }
 
         // Customer name filter

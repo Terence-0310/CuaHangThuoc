@@ -798,7 +798,7 @@ public class ProductPanel extends JPanel implements IProductView {
                     Timestamp ngay = rs.getTimestamp("NgayBan");
                     String ngayStr = ngay != null
                             ? ngay.toLocalDateTime().format(
-                                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                                java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm"))
                             : "---";
                     java.math.BigDecimal thanhTien = rs.getBigDecimal("ThanhTien");
                     String thanhTienStr = thanhTien != null

@@ -2,6 +2,7 @@ package presentation.view;
 
 import domain.entity.Product;
 import domain.entity.Supplier;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -20,6 +21,7 @@ public interface IImportView {
     String getSoLuongText();
     String getSoLoText();
     String getHanSuDungText();
+    LocalDate getHanSuDungDate();
     String getGiaNhapText();
 
     // === Hiển thị ===

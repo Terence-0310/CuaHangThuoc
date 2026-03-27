@@ -1,6 +1,7 @@
 package presentation.panel;
 
 import common.AppColors;
+import common.DatePickerField;
 import common.Session;
 import infrastructure.database.DatabaseHelper;
 
@@ -15,7 +16,6 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +25,7 @@ import java.util.List;
  */
 public class InventoryPanel extends JPanel {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy");
     private static final int PAGE_SIZE = 20;
 
     // === STATE ===
@@ -54,7 +54,8 @@ public class InventoryPanel extends JPanel {
 
     // === FORM FIELDS ===
     private JTextField txtMaLo, txtSoLo, txtTenSP, txtDVT;
-    private JTextField txtSoLuong, txtGiaNhap, txtHSD;
+    private JTextField txtSoLuong, txtGiaNhap;
+    private DatePickerField dpHSD;
     private JTextField txtNgayNhap, txtNguoiNhap, txtNCC;
 
     // === BUTTONS ===
@@ -296,7 +297,7 @@ public class InventoryPanel extends JPanel {
                 Timestamp ngay = rs.getTimestamp(isReturn ? "NgayTra" : "NgayHuy");
                 String ngayStr = ngay != null
                         ? ngay.toLocalDateTime().format(
-                            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                            java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm"))
                         : "---";
 
                 if (isReturn) {
@@ -376,10 +377,9 @@ public class InventoryPanel extends JPanel {
         txtGiaNhap = new JTextField();
         addFormRowWithSuffix(formPanel, "Giá nhập:", txtGiaNhap, "VNĐ");
 
-        txtHSD = new JTextField();
-        txtHSD.setToolTipText("dd/MM/yyyy");
-        addDateAutoSlash(txtHSD);
-        addFormRow(formPanel, "Hạn sử dụng:", txtHSD);
+        dpHSD = new DatePickerField();
+        dpHSD.setPreferredSize(new Dimension(0, 32));
+        addFormRow(formPanel, "Hạn sử dụng:", dpHSD);
 
         // Read-only info
         txtNgayNhap = new JTextField();
@@ -788,7 +788,11 @@ public class InventoryPanel extends JPanel {
         txtDVT.setText(dvt);
         txtSoLuong.setText(slObj != null ? slObj.toString() : "");
         txtGiaNhap.setText(giaNhap);
-        txtHSD.setText(hsd);
+        try {
+            dpHSD.setDate(LocalDate.parse(hsd, DateTimeFormatter.ofPattern("MM/dd/yyyy")));
+        } catch (Exception ignored) {
+            dpHSD.clear();
+        }
         txtNgayNhap.setText(ngayNhap);
         txtNguoiNhap.setText(nguoiNhap);
         txtNCC.setText(ncc);
@@ -827,11 +831,9 @@ public class InventoryPanel extends JPanel {
             return;
         }
 
-        LocalDate hsd;
-        try {
-            hsd = LocalDate.parse(txtHSD.getText().trim(), DATE_FMT);
-        } catch (DateTimeParseException e) {
-            showWarning("Hạn sử dụng không hợp lệ! (dd/MM/yyyy)");
+        LocalDate hsd = dpHSD.getDate();
+        if (hsd == null) {
+            showWarning("Vui lòng chọn hạn sử dụng!");
             return;
         }
 
@@ -1158,7 +1160,7 @@ public class InventoryPanel extends JPanel {
         txtDVT.setText("");
         txtSoLuong.setText("");
         txtGiaNhap.setText("");
-        txtHSD.setText("");
+        dpHSD.clear();
         txtNgayNhap.setText("");
         txtNguoiNhap.setText("");
         txtNCC.setText("");
@@ -1301,6 +1303,22 @@ public class InventoryPanel extends JPanel {
         ));
         field.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(field);
+        panel.add(Box.createRigidArea(new Dimension(0, 12)));
+    }
+
+    /** Overload for JComponent (e.g. DatePickerField) */
+    private void addFormRow(JPanel panel, String labelText, JComponent comp) {
+        JLabel label = new JLabel(labelText);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        label.setForeground(AppColors.TEXT_SECONDARY);
+        label.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(label);
+        panel.add(Box.createRigidArea(new Dimension(0, 4)));
+
+        comp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        comp.setPreferredSize(new Dimension(0, 34));
+        comp.setAlignmentX(LEFT_ALIGNMENT);
+        panel.add(comp);
         panel.add(Box.createRigidArea(new Dimension(0, 12)));
     }
 
