@@ -1353,29 +1353,6 @@ public class InventoryPanel extends JPanel {
         panel.add(Box.createRigidArea(new Dimension(0, 12)));
     }
 
-    private void addDateAutoSlash(JTextField field) {
-        field.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                char c = e.getKeyChar();
-                String text = field.getText();
-                if (!Character.isDigit(c) && c != '/'
-                        && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
-                    e.consume();
-                    return;
-                }
-                if (Character.isDigit(c) && text.length() >= 10) {
-                    e.consume();
-                    return;
-                }
-                if (Character.isDigit(c)) {
-                    if (text.length() == 2 || text.length() == 5) {
-                        field.setText(text + "/");
-                    }
-                }
-            }
-        });
-    }
 
     private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);

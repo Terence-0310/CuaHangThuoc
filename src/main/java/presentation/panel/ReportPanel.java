@@ -71,6 +71,9 @@ public class ReportPanel extends JPanel {
                 refreshYears();
             }
         });
+
+        // BUG FIX #2: Load data ngay khi khởi tạo (không phải đợi componentShown)
+        SwingUtilities.invokeLater(this::refreshYears);
     }
 
     // ================================================================
@@ -102,7 +105,7 @@ public class ReportPanel extends JPanel {
         bar.setBorder(new EmptyBorder(14, 24, 10, 24));
 
         // Left: Title
-        JLabel lblTitle = new JLabel("Thong Ke & Bao Cao");
+        JLabel lblTitle = new JLabel("Thống Kê & Báo Cáo");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(AppColors.TEXT_PRIMARY);
         bar.add(lblTitle, BorderLayout.WEST);
@@ -112,7 +115,7 @@ public class ReportPanel extends JPanel {
         controls.setOpaque(false);
 
         // Year combo
-        JLabel lblYear = new JLabel("Nam:");
+        JLabel lblYear = new JLabel("Năm:");
         lblYear.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblYear.setForeground(AppColors.TEXT_SECONDARY);
         controls.add(lblYear);
@@ -126,12 +129,12 @@ public class ReportPanel extends JPanel {
         controls.add(cboYear);
 
         // Quarter combo
-        JLabel lblQuarter = new JLabel("Quy:");
+        JLabel lblQuarter = new JLabel("Quý:");
         lblQuarter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblQuarter.setForeground(AppColors.TEXT_SECONDARY);
         controls.add(lblQuarter);
 
-        cboQuarter = new JComboBox<>(new String[]{"Ca nam", "Quy 1", "Quy 2", "Quy 3", "Quy 4"});
+        cboQuarter = new JComboBox<>(new String[]{"Cả năm", "Quý 1", "Quý 2", "Quý 3", "Quý 4"});
         cboQuarter.setFont(new Font("Segoe UI", Font.BOLD, 13));
         cboQuarter.setPreferredSize(new Dimension(100, 30));
         cboQuarter.addActionListener(e -> {
@@ -142,7 +145,7 @@ public class ReportPanel extends JPanel {
         controls.add(Box.createHorizontalStrut(12));
 
         // Export PDF button
-        JButton btnExportPDF = new JButton("Xuat bao cao PDF");
+        JButton btnExportPDF = new JButton("Xuất báo cáo PDF");
         btnExportPDF.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnExportPDF.setBackground(new Color(0x27, 0xAE, 0x60));
         btnExportPDF.setForeground(Color.WHITE);
@@ -179,15 +182,15 @@ public class ReportPanel extends JPanel {
         panel.setPreferredSize(new Dimension(0, 90));
 
         lblNetRevenue = new JLabel("0 VND");
-        panel.add(createKPICard("Tong Doanh Thu Thuan", lblNetRevenue,
+        panel.add(createKPICard("Tổng Doanh Thu Thuần", lblNetRevenue,
                 AppColors.PRIMARY, new Color(0xE3, 0xEF, 0xFA)));
 
         lblTotalInvoices = new JLabel("0");
-        panel.add(createKPICard("Tong So Hoa Don", lblTotalInvoices,
+        panel.add(createKPICard("Tổng Số Hóa Đơn", lblTotalInvoices,
                 AppColors.SUCCESS, new Color(0xD4, 0xED, 0xDA)));
 
         lblTotalProducts = new JLabel("0");
-        panel.add(createKPICard("Tong SP Kinh Doanh", lblTotalProducts,
+        panel.add(createKPICard("Tổng SP Kinh Doanh", lblTotalProducts,
                 new Color(0x17, 0xA2, 0xB8), new Color(0xD1, 0xEC, 0xF1)));
 
         return panel;
@@ -268,43 +271,43 @@ public class ReportPanel extends JPanel {
 
     // --- Table 1: Top 10 SP bán chạy ---
     private JPanel createTopProductsTable() {
-        String[] cols = {"#", "Ten SP", "DVT", "SL Ban (Net)", "Doanh Thu"};
+        String[] cols = {"#", "Tên SP", "ĐVT", "SL Bán (Net)", "Doanh Thu"};
         modelTopProducts = createModel(cols);
         JTable table = createStyledTable(modelTopProducts);
         table.getColumnModel().getColumn(0).setMaxWidth(35);
         table.getColumnModel().getColumn(2).setPreferredWidth(55);
         table.getColumnModel().getColumn(3).setPreferredWidth(85);
         table.getColumnModel().getColumn(4).setPreferredWidth(100);
-        return wrapTable("Top 10 Mat Hang Ban Chay", table, AppColors.PRIMARY);
+        return wrapTable("Top 10 Mặt Hàng Bán Chạy", table, AppColors.PRIMARY);
     }
 
     // --- Table 2: Top Khách hàng VIP ---
     private JPanel createTopCustomersTable() {
-        String[] cols = {"#", "Khach Hang", "SDT", "So Lan Mua", "Tong Chi"};
+        String[] cols = {"#", "Khách Hàng", "SĐT", "Số Lần Mua", "Tổng Chi"};
         modelTopCustomers = createModel(cols);
         JTable table = createStyledTable(modelTopCustomers);
         table.getColumnModel().getColumn(0).setMaxWidth(35);
         table.getColumnModel().getColumn(2).setPreferredWidth(90);
         table.getColumnModel().getColumn(3).setPreferredWidth(75);
         table.getColumnModel().getColumn(4).setPreferredWidth(100);
-        return wrapTable("Top Khach Hang VIP", table, AppColors.SUCCESS);
+        return wrapTable("Top Khách Hàng VIP", table, AppColors.SUCCESS);
     }
 
     // --- Table 3: Top 10 NCC nhập nhiều ---
     private JPanel createTopSuppliersTable() {
-        String[] cols = {"#", "Nha Cung Cap", "SDT", "So Phieu Nhap", "Tong Tien Nhap"};
+        String[] cols = {"#", "Nhà Cung Cấp", "SĐT", "Số Phiếu Nhập", "Tổng Tiền Nhập"};
         modelTopSuppliers = createModel(cols);
         JTable table = createStyledTable(modelTopSuppliers);
         table.getColumnModel().getColumn(0).setMaxWidth(35);
         table.getColumnModel().getColumn(2).setPreferredWidth(90);
         table.getColumnModel().getColumn(3).setPreferredWidth(85);
         table.getColumnModel().getColumn(4).setPreferredWidth(110);
-        return wrapTable("Top 10 Nha Cung Cap Nhap Nhieu", table, new Color(0x17, 0xA2, 0xB8));
+        return wrapTable("Top 10 Nhà Cung Cấp Nhập Nhiều", table, new Color(0x17, 0xA2, 0xB8));
     }
 
     // --- Table 4: Cảnh báo tồn kho ---
     private JPanel createStockAlertsTable() {
-        String[] cols = {"#", "Ten SP", "Tong Ton", "So Lo", "Trang Thai"};
+        String[] cols = {"#", "Tên SP", "Tổng Tồn", "Số Lô", "Trạng Thái"};
         modelStockAlerts = createModel(cols);
         JTable table = createStyledTable(modelStockAlerts);
         table.getColumnModel().getColumn(0).setMaxWidth(35);
@@ -321,11 +324,11 @@ public class ReportPanel extends JPanel {
                 Component c = super.getTableCellRendererComponent(t, val, sel, foc, row, col);
                 if (!sel && val != null) {
                     String s = val.toString();
-                    if (s.contains("Het") || s.contains("hết")) {
+                    if (s.contains("Hết") || s.contains("hết")) {
                         c.setForeground(AppColors.DANGER);
                         c.setBackground(new Color(0xF8, 0xD7, 0xDA));
                         setFont(getFont().deriveFont(Font.BOLD));
-                    } else if (s.contains("Sap") || s.contains("sắp")) {
+                    } else if (s.contains("Sắp") || s.contains("sắp")) {
                         c.setForeground(new Color(0x85, 0x6D, 0x04));
                         c.setBackground(new Color(0xFF, 0xF3, 0xCD));
                         setFont(getFont().deriveFont(Font.BOLD));
@@ -338,7 +341,7 @@ public class ReportPanel extends JPanel {
             }
         });
 
-        return wrapTable("Canh Bao Ton Kho (Het / Sap Het)", table, AppColors.DANGER);
+        return wrapTable("Cảnh Báo Tồn Kho (Hết / Sắp Hết)", table, AppColors.DANGER);
     }
 
     // ================================================================
@@ -423,15 +426,15 @@ public class ReportPanel extends JPanel {
 
     private void updateKPICards(BusinessMetricDTO kpis) {
         BigDecimal rev = kpis.getNetRevenue() != null ? kpis.getNetRevenue() : BigDecimal.ZERO;
-        lblNetRevenue.setText(MONEY_FMT.format(rev) + " VND");
-        lblTotalInvoices.setText(String.format("%,d hoa don", kpis.getTotalSaleInvoices()));
-        lblTotalProducts.setText(String.format("%,d san pham", kpis.getTotalProducts()));
+        lblNetRevenue.setText(MONEY_FMT.format(rev) + " VNĐ");
+        lblTotalInvoices.setText(String.format("%,d hóa đơn", kpis.getTotalSaleInvoices()));
+        lblTotalProducts.setText(String.format("%,d sản phẩm", kpis.getTotalProducts()));
     }
 
     private void updateTopProducts(List<TopSellingDTO> list) {
         modelTopProducts.setRowCount(0);
         if (list.isEmpty()) {
-            modelTopProducts.addRow(new Object[]{"", "Chua co du lieu", "", "", ""});
+            modelTopProducts.addRow(new Object[]{"", "Chưa có dữ liệu", "", "", ""});
             return;
         }
         int stt = 1;
@@ -441,7 +444,7 @@ public class ReportPanel extends JPanel {
                     dto.getTenSP(),
                     dto.getDonViTinh(),
                     String.format("%,d", dto.getTongSoLuongBan()),
-                    MONEY_FMT.format(dto.getTongDoanhThu() != null ? dto.getTongDoanhThu() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(dto.getTongDoanhThu() != null ? dto.getTongDoanhThu() : BigDecimal.ZERO) + " VNĐ"
             });
         }
     }
@@ -449,7 +452,7 @@ public class ReportPanel extends JPanel {
     private void updateTopCustomers(List<TopCustomerDTO> list) {
         modelTopCustomers.setRowCount(0);
         if (list.isEmpty()) {
-            modelTopCustomers.addRow(new Object[]{"", "Chua co du lieu", "", "", ""});
+            modelTopCustomers.addRow(new Object[]{"", "Chưa có dữ liệu", "", "", ""});
             return;
         }
         int stt = 1;
@@ -459,7 +462,7 @@ public class ReportPanel extends JPanel {
                     dto.getTenKH(),
                     dto.getSoDT(),
                     String.format("%,d", dto.getSoLanMua()),
-                    MONEY_FMT.format(dto.getTongTienMua() != null ? dto.getTongTienMua() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(dto.getTongTienMua() != null ? dto.getTongTienMua() : BigDecimal.ZERO) + " VNĐ"
             });
         }
     }
@@ -467,7 +470,7 @@ public class ReportPanel extends JPanel {
     private void updateTopSuppliers(List<TopSupplierDTO> list) {
         modelTopSuppliers.setRowCount(0);
         if (list.isEmpty()) {
-            modelTopSuppliers.addRow(new Object[]{"", "Chua co du lieu", "", "", ""});
+            modelTopSuppliers.addRow(new Object[]{"", "Chưa có dữ liệu", "", "", ""});
             return;
         }
         int stt = 1;
@@ -477,7 +480,7 @@ public class ReportPanel extends JPanel {
                     dto.getTenNCC(),
                     dto.getSoDT(),
                     String.format("%,d", dto.getSoPhieuNhap()),
-                    MONEY_FMT.format(dto.getTongTienNhap() != null ? dto.getTongTienNhap() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(dto.getTongTienNhap() != null ? dto.getTongTienNhap() : BigDecimal.ZERO) + " VNĐ"
             });
         }
     }
@@ -485,7 +488,7 @@ public class ReportPanel extends JPanel {
     private void updateStockAlerts(List<StockAlertDTO> list) {
         modelStockAlerts.setRowCount(0);
         if (list.isEmpty()) {
-            modelStockAlerts.addRow(new Object[]{"", "Khong co canh bao", "", "", ""});
+            modelStockAlerts.addRow(new Object[]{"", "Không có cảnh báo", "", "", ""});
             return;
         }
         int stt = 1;
@@ -506,20 +509,20 @@ public class ReportPanel extends JPanel {
 
     private void exportToPDF() {
         if (currentKPIs == null) {
-            JOptionPane.showMessageDialog(this, "Vui long tai du lieu truoc khi xuat PDF.",
-                    "Thong bao", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Vui lòng tải dữ liệu trước khi xuất PDF.",
+                    "Thông báo", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         int year = getSelectedYear();
         int quarter = getSelectedQuarter();
         String periodLabel = quarter == 0
-                ? "CA NAM " + year
-                : "QUY " + quarter + " - " + year;
+                ? "CẢ NĂM " + year
+                : "QUÝ " + quarter + " - " + year;
 
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new java.io.File("BaoCaoThongKe_" +
-                (quarter == 0 ? "Nam" : "Quy" + quarter) + "_" + year + ".pdf"));
+                (quarter == 0 ? "Năm" : "Quý" + quarter) + "_" + year + ".pdf"));
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PDF Files", "pdf"));
 
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
@@ -532,8 +535,8 @@ public class ReportPanel extends JPanel {
         try {
             generatePDF(file.getAbsolutePath(), periodLabel);
             JOptionPane.showMessageDialog(this,
-                    "Xuat PDF thanh cong!\n" + file.getAbsolutePath(),
-                    "Thanh cong", JOptionPane.INFORMATION_MESSAGE);
+                    "Xuất PDF thành công!\n" + file.getAbsolutePath(),
+                    "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
             // Open file
             if (Desktop.isDesktopSupported()) {
@@ -542,8 +545,8 @@ public class ReportPanel extends JPanel {
         } catch (Exception ex) {
             ex.printStackTrace();
             JOptionPane.showMessageDialog(this,
-                    "Loi xuat PDF: " + ex.getMessage(),
-                    "Loi", JOptionPane.ERROR_MESSAGE);
+                    "Lỗi xuất PDF: " + ex.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -571,17 +574,17 @@ public class ReportPanel extends JPanel {
 
         // === HEADER ===
         com.lowagie.text.Paragraph pTitle = new com.lowagie.text.Paragraph(
-                "BAO CAO THONG KE " + periodLabel, fTitle);
+                "BÁO CÁO THỐNG KÊ " + periodLabel, fTitle);
         pTitle.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
         doc.add(pTitle);
 
         com.lowagie.text.Paragraph pStore = new com.lowagie.text.Paragraph(
-                "Apothecary Pro - He thong Quan ly Nha thuoc", fSubtitle);
+                "Apothecary Pro - Hệ thống Quản lý Nhà thuốc", fSubtitle);
         pStore.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
         doc.add(pStore);
 
         com.lowagie.text.Paragraph pDate = new com.lowagie.text.Paragraph(
-                "Ngay xuat: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), fSubtitle);
+                "Ngày xuất: " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), fSubtitle);
         pDate.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
         doc.add(pDate);
         doc.add(new com.lowagie.text.Paragraph(" "));
@@ -590,69 +593,69 @@ public class ReportPanel extends JPanel {
         BigDecimal rev = currentKPIs.getNetRevenue() != null ? currentKPIs.getNetRevenue() : BigDecimal.ZERO;
         com.lowagie.text.pdf.PdfPTable kpiTable = new com.lowagie.text.pdf.PdfPTable(3);
         kpiTable.setWidthPercentage(100);
-        addKPICell(kpiTable, "Tong Doanh Thu Thuan", MONEY_FMT.format(rev) + " VND", fBold, fKPI);
-        addKPICell(kpiTable, "Tong So Hoa Don", String.format("%,d", currentKPIs.getTotalSaleInvoices()), fBold, fKPI);
-        addKPICell(kpiTable, "Tong SP Kinh Doanh", String.format("%,d", currentKPIs.getTotalProducts()), fBold, fKPI);
+        addKPICell(kpiTable, "Tổng Doanh Thu Thuần", MONEY_FMT.format(rev) + " VNĐ", fBold, fKPI);
+        addKPICell(kpiTable, "Tổng Số Hóa Đơn", String.format("%,d", currentKPIs.getTotalSaleInvoices()), fBold, fKPI);
+        addKPICell(kpiTable, "Tổng SP Kinh Doanh", String.format("%,d", currentKPIs.getTotalProducts()), fBold, fKPI);
         doc.add(kpiTable);
         doc.add(new com.lowagie.text.Paragraph(" "));
 
         // === TOP 10 SP ===
-        doc.add(new com.lowagie.text.Paragraph("Top 10 Mat Hang Ban Chay", fSection));
+        doc.add(new com.lowagie.text.Paragraph("Top 10 Mặt Hàng Bán Chạy", fSection));
         doc.add(new com.lowagie.text.Paragraph(" "));
         com.lowagie.text.pdf.PdfPTable tProducts = new com.lowagie.text.pdf.PdfPTable(new float[]{5, 35, 10, 20, 30});
         tProducts.setWidthPercentage(100);
-        addPdfHeaderRow(tProducts, new String[]{"#", "Ten SP", "DVT", "SL Ban", "Doanh Thu"}, fTableHeader);
+        addPdfHeaderRow(tProducts, new String[]{"#", "Tên SP", "ĐVT", "SL Bán", "Doanh Thu"}, fTableHeader);
         int stt = 1;
         for (TopSellingDTO d : currentTopProducts) {
             addPdfRow(tProducts, new String[]{
                     String.valueOf(stt++), d.getTenSP(), d.getDonViTinh(),
                     String.format("%,d", d.getTongSoLuongBan()),
-                    MONEY_FMT.format(d.getTongDoanhThu() != null ? d.getTongDoanhThu() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(d.getTongDoanhThu() != null ? d.getTongDoanhThu() : BigDecimal.ZERO) + " VNĐ"
             }, fNormal, stt);
         }
         doc.add(tProducts);
         doc.add(new com.lowagie.text.Paragraph(" "));
 
         // === TOP KH VIP ===
-        doc.add(new com.lowagie.text.Paragraph("Top Khach Hang VIP", fSection));
+        doc.add(new com.lowagie.text.Paragraph("Top Khách Hàng VIP", fSection));
         doc.add(new com.lowagie.text.Paragraph(" "));
         com.lowagie.text.pdf.PdfPTable tCustomers = new com.lowagie.text.pdf.PdfPTable(new float[]{5, 30, 20, 15, 30});
         tCustomers.setWidthPercentage(100);
-        addPdfHeaderRow(tCustomers, new String[]{"#", "Khach Hang", "SDT", "So Lan Mua", "Tong Chi"}, fTableHeader);
+        addPdfHeaderRow(tCustomers, new String[]{"#", "Khách Hàng", "SĐT", "Số Lần Mua", "Tổng Chi"}, fTableHeader);
         stt = 1;
         for (TopCustomerDTO d : currentTopCustomers) {
             addPdfRow(tCustomers, new String[]{
                     String.valueOf(stt++), d.getTenKH(), d.getSoDT(),
                     String.format("%,d", d.getSoLanMua()),
-                    MONEY_FMT.format(d.getTongTienMua() != null ? d.getTongTienMua() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(d.getTongTienMua() != null ? d.getTongTienMua() : BigDecimal.ZERO) + " VNĐ"
             }, fNormal, stt);
         }
         doc.add(tCustomers);
         doc.add(new com.lowagie.text.Paragraph(" "));
 
         // === TOP 10 NCC ===
-        doc.add(new com.lowagie.text.Paragraph("Top 10 Nha Cung Cap Nhap Nhieu", fSection));
+        doc.add(new com.lowagie.text.Paragraph("Top 10 Nhà Cung Cấp Nhập Nhiều", fSection));
         doc.add(new com.lowagie.text.Paragraph(" "));
         com.lowagie.text.pdf.PdfPTable tSuppliers = new com.lowagie.text.pdf.PdfPTable(new float[]{5, 30, 20, 15, 30});
         tSuppliers.setWidthPercentage(100);
-        addPdfHeaderRow(tSuppliers, new String[]{"#", "NCC", "SDT", "So Phieu", "Tong Tien Nhap"}, fTableHeader);
+        addPdfHeaderRow(tSuppliers, new String[]{"#", "NCC", "SĐT", "Số Phiếu", "Tổng Tiền Nhập"}, fTableHeader);
         stt = 1;
         for (TopSupplierDTO d : currentTopSuppliers) {
             addPdfRow(tSuppliers, new String[]{
                     String.valueOf(stt++), d.getTenNCC(), d.getSoDT(),
                     String.format("%,d", d.getSoPhieuNhap()),
-                    MONEY_FMT.format(d.getTongTienNhap() != null ? d.getTongTienNhap() : BigDecimal.ZERO) + " VND"
+                    MONEY_FMT.format(d.getTongTienNhap() != null ? d.getTongTienNhap() : BigDecimal.ZERO) + " VNĐ"
             }, fNormal, stt);
         }
         doc.add(tSuppliers);
         doc.add(new com.lowagie.text.Paragraph(" "));
 
         // === STOCK ALERTS ===
-        doc.add(new com.lowagie.text.Paragraph("Canh Bao Ton Kho", fSection));
+        doc.add(new com.lowagie.text.Paragraph("Cảnh Báo Tồn Kho", fSection));
         doc.add(new com.lowagie.text.Paragraph(" "));
         com.lowagie.text.pdf.PdfPTable tStock = new com.lowagie.text.pdf.PdfPTable(new float[]{5, 40, 15, 10, 30});
         tStock.setWidthPercentage(100);
-        addPdfHeaderRow(tStock, new String[]{"#", "Ten SP", "Ton Kho", "So Lo", "Trang Thai"}, fTableHeader);
+        addPdfHeaderRow(tStock, new String[]{"#", "Tên SP", "Tồn Kho", "Số Lô", "Trạng Thái"}, fTableHeader);
         stt = 1;
         for (StockAlertDTO d : currentStockAlerts) {
             addPdfRow(tStock, new String[]{
@@ -667,7 +670,7 @@ public class ReportPanel extends JPanel {
         // === FOOTER ===
         doc.add(new com.lowagie.text.Paragraph(" "));
         com.lowagie.text.Paragraph pFooter = new com.lowagie.text.Paragraph(
-                "--- Het bao cao ---", fSubtitle);
+                "--- Hết báo cáo ---", fSubtitle);
         pFooter.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
         doc.add(pFooter);
 

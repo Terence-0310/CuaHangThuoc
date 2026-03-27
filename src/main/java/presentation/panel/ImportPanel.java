@@ -614,34 +614,6 @@ public class ImportPanel extends JPanel implements IImportView {
         });
     }
 
-    /** Auto-insert '/' cho dd/MM/yyyy khi user go so */
-    private void addDateAutoSlash(JTextField field) {
-        field.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-                char c = e.getKeyChar();
-                String text = field.getText();
-                // Chi cho phep so va /
-                if (!Character.isDigit(c) && c != '/'
-                        && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
-                    e.consume();
-                    return;
-                }
-                // Max 10 ky tu (dd/MM/yyyy)
-                if (Character.isDigit(c) && text.length() >= 10) {
-                    e.consume();
-                    return;
-                }
-                // Auto add '/' sau vi tri 2 va 5
-                if (Character.isDigit(c)) {
-                    if (text.length() == 2 || text.length() == 5) {
-                        field.setText(text + "/");
-                    }
-                }
-            }
-        });
-    }
-
     /** Chỉ cho nhập số + tự thêm dấu phẩy phân cách hàng nghìn khi gõ */
     private void addMoneyField(JTextField field) {
         addNumericFilter(field);
