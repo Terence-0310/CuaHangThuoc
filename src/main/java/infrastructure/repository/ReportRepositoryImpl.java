@@ -156,12 +156,12 @@ public class ReportRepositoryImpl implements IReportRepository {
     @Override
     public BusinessMetricDTO getKPIs(int year, int quarter) {
         String dateFilter = buildDateFilter(year, quarter);
+        // RETURN invoices already have negative TongTien → SUM gives net revenue directly
         String sql = "SELECT " +
-                     "ISNULL(SUM(CASE WHEN ISNULL(LoaiHD, 'SALE') = 'SALE' AND ISNULL(TrangThai, N'Thanh cong') = N'Thanh cong' THEN TongTien ELSE 0 END) " +
-                     "     - SUM(CASE WHEN LoaiHD = 'RETURN' THEN ABS(TongTien) ELSE 0 END), 0) AS NetRevenue, " +
-                     "COUNT(CASE WHEN ISNULL(LoaiHD, 'SALE') = 'SALE' AND ISNULL(TrangThai, N'Thanh cong') = N'Thanh cong' THEN 1 END) AS TotalSaleInvoices, " +
+                     "ISNULL(SUM(TongTien), 0) AS NetRevenue, " +
+                     "COUNT(CASE WHEN ISNULL(LoaiHD, 'SALE') = 'SALE' THEN 1 END) AS TotalSaleInvoices, " +
                      "(SELECT COUNT(*) FROM SanPham WHERE TrangThai = 1) AS TotalProducts " +
-                     "FROM HoaDon WHERE " + dateFilter;
+                     "FROM HoaDon hd WHERE ISNULL(TrangThai, N'Thanh cong') = N'Thanh cong' AND " + dateFilter;
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

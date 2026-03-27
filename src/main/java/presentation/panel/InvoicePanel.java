@@ -267,7 +267,7 @@ public class InvoicePanel extends JPanel {
             }
         });
 
-        // Right-click → Void
+        // Right-click → Context menu
         JPopupMenu popup = new JPopupMenu();
         JMenuItem menuDetail = new JMenuItem("Xem chi tiết");
         menuDetail.setFont(new Font("Segoe UI", Font.PLAIN, 12));
@@ -276,6 +276,20 @@ public class InvoicePanel extends JPanel {
             if (r >= 0) showDetailDialog((int) tableModel.getValueAt(r, 1));
         });
         popup.add(menuDetail);
+
+        JMenuItem menuReturn = new JMenuItem("Trả hàng");
+        menuReturn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
+        menuReturn.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r >= 0) {
+                int maHD = (int) tableModel.getValueAt(r, 1);
+                Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
+                new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
+                loadInvoices(); // refresh after return
+            }
+        });
+        popup.add(menuReturn);
 
         popup.addSeparator();
 
@@ -298,9 +312,10 @@ public class InvoicePanel extends JPanel {
                     int row = table.rowAtPoint(e.getPoint());
                     if (row >= 0) {
                         table.setRowSelectionInterval(row, row);
-                        // Only show void option if not already voided
                         String status = tableModel.getValueAt(row, 8).toString();
-                        menuVoid.setEnabled(!status.contains("hủy") && !status.contains("Hủy"));
+                        boolean isActive = !status.contains("hủy") && !status.contains("Hủy");
+                        menuVoid.setEnabled(isActive);
+                        menuReturn.setEnabled(isActive);
                         popup.show(table, e.getX(), e.getY());
                     }
                 }
