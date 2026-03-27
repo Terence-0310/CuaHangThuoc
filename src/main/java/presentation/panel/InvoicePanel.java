@@ -2,8 +2,13 @@ package presentation.panel;
 
 import common.AppColors;
 import common.DatePickerField;
+import common.ServiceFactory;
+import domain.dto.InvoiceDetailDTO;
+import domain.dto.InvoiceFilterCriteria;
+import domain.dto.InvoiceListDTO;
+import domain.dto.PagedResult;
 import domain.entity.Invoice;
-import infrastructure.database.DatabaseHelper;
+import service.IInvoiceService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -11,22 +16,36 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
-import java.sql.*;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
  * InvoicePanel — Quản Lý Hóa Đơn (Admin only)
- * - View invoices with filters
+ * - View invoices with filters (Tách biệt 3 Tab)
  * - Double-click to view detail
  * - Void invoice (hoàn kho)
- * NO Edit / NO Delete
+ * Clean Architecture version.
  */
 public class InvoicePanel extends JPanel {
 
-    private JTextField txtSearchKH, txtSearchMaHD;
-    private DatePickerField dpFromDate, dpToDate;
-    private JComboBox<String> cboTrangThai;
+    private final IInvoiceService invoiceService = ServiceFactory.getInvoiceService();
+
+    private JTabbedPane tabbedPane;
+
+    // --- TAB 1: KHÁCH ĐĂNG KÝ ---
+    private DatePickerField dpFromDate1, dpToDate1;
+    private JTextField txtSearchKH1, txtSearchMaHD1;
+    private JComboBox<String> cboTrangThai1;
+
+    // --- TAB 2: KHÁCH VÃNG LAI ---
+    private DatePickerField dpNgayMua2;
+    private JSpinner spinTuGio2, spinDenGio2;
+    private JTextField txtSearchSP2;
+    private JComboBox<String> cboTrangThai2;
+
+    // --- TAB 3: TRẢ HÀNG ---
+    private DatePickerField dpFromDate3, dpToDate3;
+    private JTextField txtSearchMaHD3;
+
     private DefaultTableModel tableModel;
     private JTable table;
 
@@ -35,9 +54,7 @@ public class InvoicePanel extends JPanel {
     private int totalPages = 1;
     private static final int PAGE_SIZE = 15;
     private JLabel lblPageInfo;
-
-    // Customer filter: 0 = all, 1 = registered, 2 = walk-in
-    private int customerTypeFilter = 0;
+    private JPanel pageNumbersPanel;
 
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm");
 
@@ -45,18 +62,40 @@ public class InvoicePanel extends JPanel {
         setLayout(new BorderLayout());
         setBackground(AppColors.NEUTRAL);
 
-        // Top: title + filters + tab buttons
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
         northPanel.setBackground(Color.WHITE);
-        northPanel.add(createTopBar());
-        northPanel.add(createFilterTabs());
+
+        JLabel lblTitle = new JLabel("Quản Lý Hóa Đơn");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(AppColors.TEXT_PRIMARY);
+        lblTitle.setBorder(new EmptyBorder(16, 24, 8, 24));
+        
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setBackground(Color.WHITE);
+        titlePanel.add(lblTitle, BorderLayout.WEST);
+        northPanel.add(titlePanel);
+
+        tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabbedPane.setBackground(Color.WHITE);
+
+        tabbedPane.addTab("Khách Đăng Ký (SALE)", createTab1Panel());
+        tabbedPane.addTab("Khách Vãng Lai (SALE)", createTab2Panel());
+        tabbedPane.addTab("Lịch Sử Trả Hàng (RETURN)", createTab3Panel());
+
+        tabbedPane.addChangeListener(e -> {
+            currentPage = 1;
+            loadInvoices();
+        });
+
+        northPanel.add(tabbedPane);
         add(northPanel, BorderLayout.NORTH);
 
         add(createTablePanel(), BorderLayout.CENTER);
         add(createPaginationPanel(), BorderLayout.SOUTH);
 
-        SwingUtilities.invokeLater(() -> loadInvoices());
+        SwingUtilities.invokeLater(this::loadInvoices);
 
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -66,98 +105,100 @@ public class InvoicePanel extends JPanel {
         });
     }
 
-    private JPanel createFilterTabs() {
-        JPanel tabPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        tabPanel.setBackground(Color.WHITE);
-        tabPanel.setBorder(new EmptyBorder(0, 24, 8, 24));
+    private JPanel createTab1Panel() {
+        JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        pnl.setBackground(Color.WHITE);
+        pnl.setBorder(new EmptyBorder(8, 16, 8, 16));
 
-        String[] displayLabels = {"Tất cả", "Khách đã đăng ký", "Khách vãng lai"};
-        JLabel[] tabLabels = new JLabel[displayLabels.length];
+        pnl.add(makeFilterLabel("Từ ngày:"));
+        dpFromDate1 = new DatePickerField();
+        dpFromDate1.setPreferredSize(new Dimension(130, 28));
+        pnl.add(dpFromDate1);
 
-        for (int i = 0; i < displayLabels.length; i++) {
-            JLabel lbl = new JLabel(displayLabels[i], SwingConstants.CENTER);
-            lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            lbl.setOpaque(true);
-            lbl.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            lbl.setPreferredSize(new Dimension(lbl.getPreferredSize().width + 32, 32));
+        pnl.add(makeFilterLabel("Đến ngày:"));
+        dpToDate1 = new DatePickerField();
+        dpToDate1.setPreferredSize(new Dimension(130, 28));
+        pnl.add(dpToDate1);
 
-            tabLabels[i] = lbl;
-            int idx = i;
+        pnl.add(makeFilterLabel("Khách hàng:"));
+        txtSearchKH1 = makeFilterField(12);
+        pnl.add(txtSearchKH1);
 
-            lbl.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseClicked(java.awt.event.MouseEvent e) {
-                    customerTypeFilter = idx;
-                    currentPage = 1;
-                    styleFilterTabs(tabLabels, idx);
-                    loadInvoices();
-                }
-            });
-            tabPanel.add(lbl);
-        }
+        pnl.add(makeFilterLabel("Mã HĐ:"));
+        txtSearchMaHD1 = makeFilterField(6);
+        pnl.add(txtSearchMaHD1);
 
-        styleFilterTabs(tabLabels, 0);
-        return tabPanel;
+        pnl.add(makeFilterLabel("Trạng thái:"));
+        cboTrangThai1 = new JComboBox<>(new String[]{"Tất cả", "Thành công", "Đã hủy"});
+        cboTrangThai1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        pnl.add(cboTrangThai1);
+
+        JButton btnSearch = createSearchButton();
+        pnl.add(btnSearch);
+        return pnl;
     }
 
-    private void styleFilterTabs(JLabel[] tabs, int activeIdx) {
-        for (int i = 0; i < tabs.length; i++) {
-            if (i == activeIdx) {
-                tabs[i].setBackground(AppColors.PRIMARY);
-                tabs[i].setForeground(Color.WHITE);
-                tabs[i].setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 3, 0, AppColors.PRIMARY),
-                        new EmptyBorder(6, 16, 3, 16)));
-            } else {
-                tabs[i].setBackground(new Color(0xF0, 0xF0, 0xF0));
-                tabs[i].setForeground(new Color(0x33, 0x33, 0x33));
-                tabs[i].setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 1, 0, AppColors.NEUTRAL_DARK),
-                        new EmptyBorder(6, 16, 5, 16)));
-            }
-        }
+    private JPanel createTab2Panel() {
+        JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        pnl.setBackground(Color.WHITE);
+        pnl.setBorder(new EmptyBorder(8, 16, 8, 16));
+
+        pnl.add(makeFilterLabel("Ngày mua:"));
+        dpNgayMua2 = new DatePickerField();
+        dpNgayMua2.setPreferredSize(new Dimension(130, 28));
+        pnl.add(dpNgayMua2);
+
+        pnl.add(makeFilterLabel("Từ giờ:"));
+        spinTuGio2 = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor timeEditor1 = new JSpinner.DateEditor(spinTuGio2, "HH:mm");
+        spinTuGio2.setEditor(timeEditor1);
+        pnl.add(spinTuGio2);
+
+        pnl.add(makeFilterLabel("Đến giờ:"));
+        spinDenGio2 = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor timeEditor2 = new JSpinner.DateEditor(spinDenGio2, "HH:mm");
+        spinDenGio2.setEditor(timeEditor2);
+        pnl.add(spinDenGio2);
+
+        pnl.add(makeFilterLabel("Tên/Mã SP:"));
+        txtSearchSP2 = makeFilterField(12);
+        pnl.add(txtSearchSP2);
+
+        pnl.add(makeFilterLabel("Trạng thái:"));
+        cboTrangThai2 = new JComboBox<>(new String[]{"Tất cả", "Thành công", "Đã hủy"});
+        cboTrangThai2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        pnl.add(cboTrangThai2);
+
+        JButton btnSearch = createSearchButton();
+        pnl.add(btnSearch);
+        return pnl;
     }
 
-    // ================================================================
-    //  TOP BAR: Title + Filters
-    // ================================================================
-    private JPanel createTopBar() {
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
-        top.setBorder(new EmptyBorder(16, 24, 12, 24));
+    private JPanel createTab3Panel() {
+        JPanel pnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        pnl.setBackground(Color.WHITE);
+        pnl.setBorder(new EmptyBorder(8, 16, 8, 16));
 
-        JLabel lblTitle = new JLabel("Quản Lý Hóa Đơn");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblTitle.setForeground(AppColors.TEXT_PRIMARY);
-        top.add(lblTitle, BorderLayout.NORTH);
+        pnl.add(makeFilterLabel("Từ ngày:"));
+        dpFromDate3 = new DatePickerField();
+        dpFromDate3.setPreferredSize(new Dimension(130, 28));
+        pnl.add(dpFromDate3);
 
-        // Filter row
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
-        filterPanel.setBackground(Color.WHITE);
+        pnl.add(makeFilterLabel("Đến ngày:"));
+        dpToDate3 = new DatePickerField();
+        dpToDate3.setPreferredSize(new Dimension(130, 28));
+        pnl.add(dpToDate3);
 
-        filterPanel.add(makeFilterLabel("Từ ngày:"));
-        dpFromDate = new DatePickerField();
-        dpFromDate.setPreferredSize(new Dimension(130, 28));
-        filterPanel.add(dpFromDate);
+        pnl.add(makeFilterLabel("Mã HĐ Trả:"));
+        txtSearchMaHD3 = makeFilterField(8);
+        pnl.add(txtSearchMaHD3);
 
-        filterPanel.add(makeFilterLabel("Đến ngày:"));
-        dpToDate = new DatePickerField();
-        dpToDate.setPreferredSize(new Dimension(130, 28));
-        filterPanel.add(dpToDate);
+        JButton btnSearch = createSearchButton();
+        pnl.add(btnSearch);
+        return pnl;
+    }
 
-        filterPanel.add(makeFilterLabel("Khách hàng:"));
-        txtSearchKH = makeFilterField(12);
-        filterPanel.add(txtSearchKH);
-
-        filterPanel.add(makeFilterLabel("Mã HĐ:"));
-        txtSearchMaHD = makeFilterField(6);
-        filterPanel.add(txtSearchMaHD);
-
-        filterPanel.add(makeFilterLabel("Trạng thái:"));
-        cboTrangThai = new JComboBox<>(new String[]{"Tất cả", "Thành công", "Đã hủy"});
-        cboTrangThai.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        filterPanel.add(cboTrangThai);
-
+    private JButton createSearchButton() {
         JButton btnSearch = new JButton("Tìm kiếm");
         btnSearch.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnSearch.setBackground(AppColors.PRIMARY);
@@ -166,10 +207,7 @@ public class InvoicePanel extends JPanel {
         btnSearch.setBorderPainted(false);
         btnSearch.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnSearch.addActionListener(e -> { currentPage = 1; loadInvoices(); });
-        filterPanel.add(btnSearch);
-
-        top.add(filterPanel, BorderLayout.CENTER);
-        return top;
+        return btnSearch;
     }
 
     private JLabel makeFilterLabel(String text) {
@@ -183,16 +221,107 @@ public class InvoicePanel extends JPanel {
         JTextField tf = new JTextField(cols);
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         tf.setBorder(BorderFactory.createCompoundBorder(
-                new javax.swing.border.LineBorder(AppColors.NEUTRAL_DARK, 1),
+                BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1),
                 new EmptyBorder(4, 8, 4, 8)));
         return tf;
     }
 
+    private InvoiceFilterCriteria buildCriteria() {
+        InvoiceFilterCriteria c = new InvoiceFilterCriteria();
+        int tab = tabbedPane.getSelectedIndex();
+        if (tab == 0) {
+            c.setCustomerTypeFilter(1); // Đăng ký
+            c.setInvoiceTypeFilter(1); // SALE
+            c.setFromDate(dpFromDate1.getDate());
+            c.setToDate(dpToDate1.getDate());
+            c.setSearchKH(txtSearchKH1.getText());
+            c.setSearchMaHD(txtSearchMaHD1.getText());
+            c.setStatusFilter(cboTrangThai1.getSelectedIndex());
+        } else if (tab == 1) {
+            c.setCustomerTypeFilter(2); // Vãng lai
+            c.setInvoiceTypeFilter(1); // SALE
+            if (dpNgayMua2.getDate() != null) {
+                c.setFromDate(dpNgayMua2.getDate());
+                c.setToDate(dpNgayMua2.getDate());
+            }
+            c.setFromTime(new java.text.SimpleDateFormat("HH:mm").format(spinTuGio2.getValue()));
+            c.setToTime(new java.text.SimpleDateFormat("HH:mm").format(spinDenGio2.getValue()));
+            c.setSearchSP(txtSearchSP2.getText());
+            c.setStatusFilter(cboTrangThai2.getSelectedIndex());
+        } else if (tab == 2) {
+            c.setCustomerTypeFilter(0); // All customers
+            c.setInvoiceTypeFilter(2); // RETURN
+            c.setFromDate(dpFromDate3.getDate());
+            c.setToDate(dpToDate3.getDate());
+            c.setSearchMaHD(txtSearchMaHD3.getText());
+            c.setStatusFilter(0);
+        }
+        return c;
+    }
+
+    private void loadInvoices() {
+        try {
+            InvoiceFilterCriteria c = buildCriteria();
+            PagedResult<InvoiceListDTO> pr = invoiceService.searchInvoices(c, currentPage, PAGE_SIZE);
+
+            tableModel.setRowCount(0);
+            totalPages = pr.getTotalPages();
+            
+            int stt = (currentPage - 1) * PAGE_SIZE;
+            for (InvoiceListDTO dto : pr.getData()) {
+                stt++;
+                String ngayStr = dto.getNgayBan() != null ? dto.getNgayBan().format(DATETIME_FMT) : "---";
+                String tienStr = dto.getTongTien() != null ? String.format("%,.0f VNĐ", dto.getTongTien()) : "0";
+                
+                String displayTT = "Thành công";
+                if (dto.getTrangThai() != null && (dto.getTrangThai().contains("huy") || dto.getTrangThai().contains("Hủy"))) {
+                    displayTT = "Đã hủy";
+                }
+
+                tableModel.addRow(new Object[]{
+                    stt,
+                    dto.getMaHD(),
+                    ngayStr,
+                    dto.getTenKH() != null ? dto.getTenKH() : "Khách vãng lai",
+                    dto.getSoDT() != null ? dto.getSoDT() : "---",
+                    dto.getTenNV(),
+                    dto.getPhuongThucTT(),
+                    tienStr,
+                    displayTT
+                });
+            }
+
+            // Update pagination UI
+            pageNumbersPanel.removeAll();
+            int start = Math.max(1, currentPage - 2);
+            int end = Math.min(totalPages, currentPage + 2);
+            for (int p = start; p <= end; p++) {
+                JButton pBtn = createPageNumButton(String.valueOf(p));
+                if (p == currentPage) {
+                    pBtn.setBackground(AppColors.PRIMARY);
+                    pBtn.setForeground(Color.WHITE);
+                    pBtn.setBorder(BorderFactory.createLineBorder(AppColors.PRIMARY, 1));
+                }
+                int pg = p;
+                pBtn.addActionListener(ev -> { currentPage = pg; loadInvoices(); });
+                pageNumbersPanel.add(pBtn);
+            }
+            pageNumbersPanel.revalidate();
+            pageNumbersPanel.repaint();
+            lblPageInfo.setText("Trang " + currentPage + " / " + totalPages);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi tải hóa đơn: " + e.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // ================================================================
-    //  TABLE
+    //  TABLE & DETAIL
     // ================================================================
     private JScrollPane createTablePanel() {
-        String[] cols = {"STT", "Mã HĐ", "Ngày bán", "Khách hàng", "SĐT", "Nhân viên", "Phương thức", "Tổng tiền", "Trạng thái"};
+        String[] cols = {"STT", "Mã HĐ", "Ngày", "Khách hàng", "SĐT", "Nhân viên", "Phương thức", "Tổng tiền", "Trạng thái"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -210,9 +339,7 @@ public class InvoicePanel extends JPanel {
 
         // Column widths
         table.getColumnModel().getColumn(0).setPreferredWidth(40);
-        table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(60);
-        table.getColumnModel().getColumn(1).setMaxWidth(70);
         table.getColumnModel().getColumn(2).setPreferredWidth(130);
         table.getColumnModel().getColumn(3).setPreferredWidth(150);
         table.getColumnModel().getColumn(4).setPreferredWidth(100);
@@ -221,21 +348,18 @@ public class InvoicePanel extends JPanel {
         table.getColumnModel().getColumn(7).setPreferredWidth(110);
         table.getColumnModel().getColumn(8).setPreferredWidth(90);
 
-        // Renderer
         table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v,
                     boolean sel, boolean foc, int r, int c) {
-                // STT column: show visual row number
                 Object displayVal = (c == 0) ? (r + 1) : v;
                 Component comp = super.getTableCellRendererComponent(t, displayVal, sel, foc, r, c);
                 if (!sel) comp.setBackground(r % 2 == 0 ? Color.WHITE : AppColors.TABLE_ROW_ALT);
                 setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 if (!sel) comp.setForeground(AppColors.TEXT_PRIMARY);
 
-                if (c == 0 || c == 1) {
-                    setHorizontalAlignment(SwingConstants.CENTER);
-                } else if (c == 7) {
+                if (c == 0 || c == 1) setHorizontalAlignment(SwingConstants.CENTER);
+                else if (c == 7) {
                     setHorizontalAlignment(SwingConstants.RIGHT);
                     comp.setForeground(sel ? Color.WHITE : AppColors.SUCCESS);
                     setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -256,21 +380,17 @@ public class InvoicePanel extends JPanel {
             }
         });
 
-        // Double-click → detail dialog
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
-                    int maHD = (int) tableModel.getValueAt(table.getSelectedRow(), 1);
-                    showDetailDialog(maHD);
+                    showDetailDialog((int) tableModel.getValueAt(table.getSelectedRow(), 1));
                 }
             }
         });
 
-        // Right-click → Context menu
         JPopupMenu popup = new JPopupMenu();
         JMenuItem menuDetail = new JMenuItem("Xem chi tiết");
-        menuDetail.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         menuDetail.addActionListener(e -> {
             int r = table.getSelectedRow();
             if (r >= 0) showDetailDialog((int) tableModel.getValueAt(r, 1));
@@ -278,7 +398,6 @@ public class InvoicePanel extends JPanel {
         popup.add(menuDetail);
 
         JMenuItem menuReturn = new JMenuItem("Trả hàng");
-        menuReturn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
         menuReturn.addActionListener(e -> {
             int r = table.getSelectedRow();
@@ -286,15 +405,13 @@ public class InvoicePanel extends JPanel {
                 int maHD = (int) tableModel.getValueAt(r, 1);
                 Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
                 new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
-                loadInvoices(); // refresh after return
+                loadInvoices();
             }
         });
         popup.add(menuReturn);
-
         popup.addSeparator();
 
         JMenuItem menuVoid = new JMenuItem("Hủy hóa đơn");
-        menuVoid.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         menuVoid.setForeground(AppColors.DANGER);
         menuVoid.addActionListener(e -> {
             int r = table.getSelectedRow();
@@ -303,10 +420,8 @@ public class InvoicePanel extends JPanel {
         popup.add(menuVoid);
 
         table.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mousePressed(java.awt.event.MouseEvent e) { tryPopup(e); }
-            @Override
-            public void mouseReleased(java.awt.event.MouseEvent e) { tryPopup(e); }
+            @Override public void mousePressed(java.awt.event.MouseEvent e) { tryPopup(e); }
+            @Override public void mouseReleased(java.awt.event.MouseEvent e) { tryPopup(e); }
             private void tryPopup(java.awt.event.MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     int row = table.rowAtPoint(e.getPoint());
@@ -328,10 +443,135 @@ public class InvoicePanel extends JPanel {
         return sp;
     }
 
-    // ================================================================
-    //  PAGINATION
-    // ================================================================
-    private JPanel pageNumbersPanel;
+    private void showDetailDialog(int maHD) {
+        try {
+            Invoice inv = invoiceService.getInvoiceHeader(maHD);
+            if (inv == null) return;
+            java.util.List<InvoiceDetailDTO> details = invoiceService.getInvoiceDetails(maHD);
+
+            String[] detailCols = {"Tên sản phẩm", "Số Lô", "Số lượng", "Đơn giá", "Thành tiền"};
+            DefaultTableModel detailModel = new DefaultTableModel(detailCols, 0) {
+                @Override public boolean isCellEditable(int r, int c) { return false; }
+            };
+            
+            for (InvoiceDetailDTO d : details) {
+                detailModel.addRow(new Object[]{
+                    d.getTenSP(), d.getSoLo(), d.getSoLuong(),
+                    String.format("%,.0f VNĐ", d.getDonGia()),
+                    String.format("%,.0f VNĐ", d.getThanhTien())
+                });
+            }
+
+            JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chi tiết hóa đơn #" + maHD, true);
+            dlg.setSize(800, 500);
+            dlg.setLocationRelativeTo(this);
+
+            JPanel content = new JPanel(new BorderLayout());
+            content.setBackground(Color.WHITE);
+
+            boolean isVoided = inv.getTrangThai() != null && inv.getTrangThai().contains("huy");
+            JPanel hdr = new JPanel(new BorderLayout());
+            hdr.setBackground(isVoided ? AppColors.DANGER : new Color(0x17, 0xA2, 0xB8));
+            hdr.setBorder(new EmptyBorder(14, 20, 14, 20));
+
+            JLabel lblH = new JLabel("Hóa đơn #" + maHD + (isVoided ? " — ĐÃ HỦY" : ""));
+            lblH.setFont(new Font("Segoe UI", Font.BOLD, 15));
+            lblH.setForeground(Color.WHITE);
+            hdr.add(lblH, BorderLayout.WEST);
+            content.add(hdr, BorderLayout.NORTH);
+
+            JPanel body = new JPanel(new BorderLayout());
+            body.setBackground(Color.WHITE);
+
+            JPanel info = new JPanel(new GridLayout(0, 2, 10, 4));
+            info.setBackground(Color.WHITE);
+            info.setBorder(new EmptyBorder(12, 20, 12, 20));
+            info.add(makeInfoLabel("Ngày:"));
+            info.add(makeInfoValue(inv.getNgayBan() != null ? inv.getNgayBan().format(DATETIME_FMT) : "---"));
+            info.add(makeInfoLabel("Khách hàng:"));
+            info.add(makeInfoValue((inv.getTenKH() != null ? inv.getTenKH() : "Khách vãng lai") + " (" + (inv.getSoDT() != null ? inv.getSoDT() : "---") + ")"));
+            info.add(makeInfoLabel("Nhân viên:"));
+            info.add(makeInfoValue(inv.getTenNhanVien()));
+            info.add(makeInfoLabel("Phương thức:"));
+            info.add(makeInfoValue(inv.getPhuongThucTT()));
+            info.add(makeInfoLabel("Tổng tiền:"));
+            JLabel lblTotal = makeInfoValue(inv.getTongTien() != null ? String.format("%,.0f VNĐ", inv.getTongTien()) : "0");
+            lblTotal.setForeground(AppColors.SUCCESS);
+            lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            info.add(lblTotal);
+
+            if (isVoided && inv.getLyDoHuy() != null) {
+                info.add(makeInfoLabel("Lý do hủy:"));
+                JLabel lblReason = makeInfoValue(inv.getLyDoHuy());
+                lblReason.setForeground(AppColors.DANGER);
+                info.add(lblReason);
+            }
+
+            body.add(info, BorderLayout.NORTH);
+
+            JTable detailTable = new JTable(detailModel);
+            detailTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            detailTable.setRowHeight(28);
+            detailTable.setShowGrid(false);
+            detailTable.setFillsViewportHeight(true);
+            detailTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+            detailTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+            detailTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+
+            JScrollPane sp = new JScrollPane(detailTable);
+            sp.setBorder(new EmptyBorder(0, 20, 12, 20));
+            body.add(sp, BorderLayout.CENTER);
+
+            content.add(body, BorderLayout.CENTER);
+            dlg.setContentPane(content);
+            dlg.setVisible(true);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi xem chi tiết: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private JLabel makeInfoLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(AppColors.TEXT_SECONDARY);
+        return lbl;
+    }
+
+    private JLabel makeInfoValue(String text) {
+        JLabel lbl = new JLabel(text != null ? text : "---");
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lbl.setForeground(AppColors.TEXT_PRIMARY);
+        return lbl;
+    }
+
+    private void doVoidInvoice(int maHD) {
+        int row = table.getSelectedRow();
+        if (row < 0) return;
+        String currentStatus = tableModel.getValueAt(row, 8).toString();
+        if (currentStatus.contains("hủy") || currentStatus.contains("Hủy")) {
+            JOptionPane.showMessageDialog(this, "Hóa đơn này đã bị hủy trước đó.");
+            return;
+        }
+
+        String lyDo = JOptionPane.showInputDialog(this, "Nhập lý do hủy hóa đơn #" + maHD + ":");
+        if (lyDo == null || lyDo.trim().isEmpty()) return;
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Xác nhận HỦY hóa đơn #" + maHD + "?\nLý do: " + lyDo + "\n(Thu hồi tồn kho)",
+                "Xác nhận hủy", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        try {
+            invoiceService.voidInvoice(maHD, lyDo.trim());
+            JOptionPane.showMessageDialog(this, "Đã hủy hóa đơn #" + maHD + " thành công (Hoàn trả tồn kho).");
+            loadInvoices();
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Lỗi hủy hóa đơn: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     private JPanel createPaginationPanel() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 8));
@@ -372,9 +612,8 @@ public class InvoicePanel extends JPanel {
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btn.setPreferredSize(new Dimension(70, 28));
         btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setBackground(Color.WHITE);
         btn.setForeground(AppColors.PRIMARY);
+        btn.setBackground(Color.WHITE);
         btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
         return btn;
     }
@@ -384,404 +623,9 @@ public class InvoicePanel extends JPanel {
         btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btn.setPreferredSize(new Dimension(32, 28));
         btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setBackground(Color.WHITE);
         btn.setForeground(AppColors.PRIMARY);
         btn.setBorder(BorderFactory.createLineBorder(AppColors.NEUTRAL_DARK, 1));
         return btn;
-    }
-
-    // ================================================================
-    //  LOAD INVOICES (with filters + pagination)
-    // ================================================================
-    private void loadInvoices() {
-        tableModel.setRowCount(0);
-
-        StringBuilder where = new StringBuilder("WHERE 1=1 ");
-        java.util.List<Object> params = new java.util.ArrayList<>();
-
-        // Date filter
-        LocalDate fromDate = dpFromDate.getDate();
-        if (fromDate != null) {
-            where.append("AND hd.NgayBan >= ? ");
-            params.add(Timestamp.valueOf(fromDate.atStartOfDay()));
-        }
-        LocalDate toDate = dpToDate.getDate();
-        if (toDate != null) {
-            where.append("AND hd.NgayBan < ? ");
-            params.add(Timestamp.valueOf(toDate.plusDays(1).atStartOfDay()));
-        }
-
-        // Customer name filter
-        String khFilter = txtSearchKH.getText().trim();
-        if (!khFilter.isEmpty()) {
-            where.append("AND (kh.TenKH LIKE ? OR kh.SoDT LIKE ?) ");
-            params.add("%" + khFilter + "%");
-            params.add("%" + khFilter + "%");
-        }
-
-        // Invoice ID filter
-        String maHDFilter = txtSearchMaHD.getText().trim();
-        if (!maHDFilter.isEmpty()) {
-            try {
-                where.append("AND hd.MaHD = ? ");
-                params.add(Integer.parseInt(maHDFilter));
-            } catch (NumberFormatException ignored) {}
-        }
-
-        // Status filter
-        int statusIdx = cboTrangThai.getSelectedIndex();
-        if (statusIdx == 1) {
-            where.append("AND hd.TrangThai = N'Thanh cong' ");
-        } else if (statusIdx == 2) {
-            where.append("AND hd.TrangThai = N'Da huy' ");
-        }
-
-        // Customer type filter (from tabs)
-        if (customerTypeFilter == 1) {
-            where.append("AND hd.MaKH IS NOT NULL ");
-        } else if (customerTypeFilter == 2) {
-            where.append("AND hd.MaKH IS NULL ");
-        }
-
-        String baseQuery =
-            "FROM HoaDon hd " +
-            "LEFT JOIN KhachHang kh ON hd.MaKH = kh.MaKH " +
-            "JOIN NguoiDung nd ON hd.MaND = nd.MaND " +
-            where;
-
-        // Count
-        String countSql = "SELECT COUNT(*) " + baseQuery;
-
-        // Data
-        String dataSql =
-            "SELECT hd.MaHD, hd.NgayBan, " +
-            "ISNULL(kh.TenKH, N'Khách vãng lai') AS TenKH, " +
-            "ISNULL(kh.SoDT, '---') AS SoDT, " +
-            "nd.HoTen AS TenNV, hd.PhuongThucTT, hd.TongTien, hd.TrangThai " +
-            baseQuery +
-            "ORDER BY hd.NgayBan DESC " +
-            "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-
-        try (Connection conn = DatabaseHelper.getConnection()) {
-            // Count total
-            try (PreparedStatement ps = conn.prepareStatement(countSql)) {
-                int idx = 1;
-                for (Object p : params) {
-                    if (p instanceof Timestamp) ps.setTimestamp(idx++, (Timestamp) p);
-                    else if (p instanceof Integer) ps.setInt(idx++, (Integer) p);
-                    else ps.setNString(idx++, p.toString());
-                }
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        int total = rs.getInt(1);
-                        totalPages = Math.max(1, (int) Math.ceil((double) total / PAGE_SIZE));
-                        if (currentPage > totalPages) currentPage = totalPages;
-                    }
-                }
-            }
-
-            // Fetch page
-            try (PreparedStatement ps = conn.prepareStatement(dataSql)) {
-                int idx = 1;
-                for (Object p : params) {
-                    if (p instanceof Timestamp) ps.setTimestamp(idx++, (Timestamp) p);
-                    else if (p instanceof Integer) ps.setInt(idx++, (Integer) p);
-                    else ps.setNString(idx++, p.toString());
-                }
-                ps.setInt(idx++, (currentPage - 1) * PAGE_SIZE);
-                ps.setInt(idx, PAGE_SIZE);
-
-                int stt = (currentPage - 1) * PAGE_SIZE;
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        stt++;
-                        Timestamp ts = rs.getTimestamp("NgayBan");
-                        String ngayStr = ts != null
-                                ? ts.toLocalDateTime().format(DATETIME_FMT)
-                                : "---";
-                        BigDecimal tien = rs.getBigDecimal("TongTien");
-                        String tienStr = tien != null ? String.format("%,.0f VNĐ", tien) : "0";
-                        String trangThai = rs.getNString("TrangThai");
-                        String displayTT = "Thành công";
-                        if (trangThai != null && trangThai.contains("huy")) displayTT = "Đã hủy";
-
-                        tableModel.addRow(new Object[]{
-                            stt,
-                            rs.getInt("MaHD"),
-                            ngayStr,
-                            rs.getNString("TenKH"),
-                            rs.getString("SoDT"),
-                            rs.getNString("TenNV"),
-                            rs.getNString("PhuongThucTT"),
-                            tienStr,
-                            displayTT
-                        });
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi tải hóa đơn: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-        // Update pagination page numbers
-        pageNumbersPanel.removeAll();
-        int start = Math.max(1, currentPage - 2);
-        int end = Math.min(totalPages, currentPage + 2);
-        for (int p = start; p <= end; p++) {
-            JButton pBtn = createPageNumButton(String.valueOf(p));
-            if (p == currentPage) {
-                pBtn.setBackground(AppColors.PRIMARY);
-                pBtn.setForeground(Color.WHITE);
-                pBtn.setBorder(BorderFactory.createLineBorder(AppColors.PRIMARY, 1));
-            }
-            int pg = p;
-            pBtn.addActionListener(ev -> { currentPage = pg; loadInvoices(); });
-            pageNumbersPanel.add(pBtn);
-        }
-        pageNumbersPanel.revalidate();
-        pageNumbersPanel.repaint();
-
-        lblPageInfo.setText("Trang " + currentPage + " / " + totalPages);
-    }
-
-    // ================================================================
-    //  DETAIL DIALOG
-    // ================================================================
-    private void showDetailDialog(int maHD) {
-        String sqlHeader =
-            "SELECT hd.*, " +
-            "ISNULL(kh.TenKH, N'Khách vãng lai') AS TenKH, " +
-            "ISNULL(kh.SoDT, '---') AS SoDT, " +
-            "nd.HoTen AS TenNV " +
-            "FROM HoaDon hd " +
-            "LEFT JOIN KhachHang kh ON hd.MaKH = kh.MaKH " +
-            "JOIN NguoiDung nd ON hd.MaND = nd.MaND " +
-            "WHERE hd.MaHD = ?";
-
-        String sqlDetails =
-            "SELECT ct.MaCTHD, sp.TenSP, l.SoLo, ct.SoLuong, ct.DonGia, ct.ThanhTien " +
-            "FROM ChiTietHoaDon ct " +
-            "JOIN SanPham sp ON ct.MaSP = sp.MaSP " +
-            "JOIN LoHang l ON ct.MaLo = l.MaLo " +
-            "WHERE ct.MaHD = ?";
-
-        try (Connection conn = DatabaseHelper.getConnection()) {
-            // Header info
-            Invoice inv = null;
-            try (PreparedStatement ps = conn.prepareStatement(sqlHeader)) {
-                ps.setInt(1, maHD);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        inv = new Invoice();
-                        inv.setMaHD(rs.getInt("MaHD"));
-                        Timestamp ts = rs.getTimestamp("NgayBan");
-                        if (ts != null) inv.setNgayBan(ts.toLocalDateTime());
-                        inv.setTongTien(rs.getBigDecimal("TongTien"));
-                        inv.setPhuongThucTT(rs.getNString("PhuongThucTT"));
-                        inv.setTrangThai(rs.getNString("TrangThai"));
-                        inv.setLyDoHuy(rs.getNString("LyDoHuy"));
-                        inv.setTenKH(rs.getNString("TenKH"));
-                        inv.setSoDT(rs.getString("SoDT"));
-                        inv.setTenNhanVien(rs.getNString("TenNV"));
-                    }
-                }
-            }
-            if (inv == null) return;
-
-            // Detail items — NO Giá vốn (internal data)
-            String[] detailCols = {"Tên sản phẩm", "Số Lô", "Số lượng", "Đơn giá", "Thành tiền"};
-            DefaultTableModel detailModel = new DefaultTableModel(detailCols, 0) {
-                @Override public boolean isCellEditable(int r, int c) { return false; }
-            };
-            try (PreparedStatement ps = conn.prepareStatement(sqlDetails)) {
-                ps.setInt(1, maHD);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        BigDecimal donGia = rs.getBigDecimal("DonGia");
-                        BigDecimal thanhTien = rs.getBigDecimal("ThanhTien");
-                        detailModel.addRow(new Object[]{
-                            rs.getNString("TenSP"),
-                            rs.getNString("SoLo"),
-                            rs.getInt("SoLuong"),
-                            donGia != null ? String.format("%,.0f VNĐ", donGia) : "---",
-                            thanhTien != null ? String.format("%,.0f VNĐ", thanhTien) : "---"
-                        });
-                    }
-                }
-            }
-
-            // Build dialog
-            JDialog dlg = new JDialog(
-                    (Frame) SwingUtilities.getWindowAncestor(this),
-                    "Chi tiết hóa đơn #" + maHD, true);
-            dlg.setSize(800, 500);
-            dlg.setLocationRelativeTo(this);
-
-            JPanel content = new JPanel(new BorderLayout());
-            content.setBackground(Color.WHITE);
-
-            // Header
-            boolean isVoided = inv.getTrangThai() != null && inv.getTrangThai().contains("huy");
-            JPanel hdr = new JPanel(new BorderLayout());
-            hdr.setBackground(isVoided ? AppColors.DANGER : new Color(0x17, 0xA2, 0xB8));
-            hdr.setBorder(new EmptyBorder(14, 20, 14, 20));
-
-            JLabel lblH = new JLabel("Hóa đơn #" + maHD + (isVoided ? " — ĐÃ HỦY" : ""));
-            lblH.setFont(new Font("Segoe UI", Font.BOLD, 15));
-            lblH.setForeground(Color.WHITE);
-            hdr.add(lblH, BorderLayout.WEST);
-            content.add(hdr, BorderLayout.NORTH);
-
-            // Info + Table
-            JPanel body = new JPanel(new BorderLayout());
-            body.setBackground(Color.WHITE);
-
-            // Info grid
-            JPanel info = new JPanel(new GridLayout(0, 2, 10, 4));
-            info.setBackground(Color.WHITE);
-            info.setBorder(new EmptyBorder(12, 20, 12, 20));
-            info.add(makeInfoLabel("Ngày bán:"));
-            info.add(makeInfoValue(inv.getNgayBan() != null ? inv.getNgayBan().format(DATETIME_FMT) : "---"));
-            info.add(makeInfoLabel("Khách hàng:"));
-            info.add(makeInfoValue(inv.getTenKH() + " (" + inv.getSoDT() + ")"));
-            info.add(makeInfoLabel("Nhân viên:"));
-            info.add(makeInfoValue(inv.getTenNhanVien()));
-            info.add(makeInfoLabel("Phương thức:"));
-            info.add(makeInfoValue(inv.getPhuongThucTT()));
-            info.add(makeInfoLabel("Tổng tiền:"));
-            JLabel lblTotal = makeInfoValue(inv.getTongTien() != null ? String.format("%,.0f VNĐ", inv.getTongTien()) : "0");
-            lblTotal.setForeground(AppColors.SUCCESS);
-            lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            info.add(lblTotal);
-
-            if (isVoided && inv.getLyDoHuy() != null) {
-                info.add(makeInfoLabel("Lý do hủy:"));
-                JLabel lblReason = makeInfoValue(inv.getLyDoHuy());
-                lblReason.setForeground(AppColors.DANGER);
-                info.add(lblReason);
-            }
-
-            body.add(info, BorderLayout.NORTH);
-
-            // Detail table
-            JTable detailTable = new JTable(detailModel);
-            detailTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-            detailTable.setRowHeight(28);
-            detailTable.setShowGrid(false);
-            detailTable.setFillsViewportHeight(true);
-            detailTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-            detailTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
-            detailTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
-
-            JScrollPane sp = new JScrollPane(detailTable);
-            sp.setBorder(new EmptyBorder(0, 20, 12, 20));
-            body.add(sp, BorderLayout.CENTER);
-
-            content.add(body, BorderLayout.CENTER);
-            dlg.setContentPane(content);
-            dlg.setVisible(true);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi xem chi tiết: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private JLabel makeInfoLabel(String text) {
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lbl.setForeground(AppColors.TEXT_SECONDARY);
-        return lbl;
-    }
-
-    private JLabel makeInfoValue(String text) {
-        JLabel lbl = new JLabel(text != null ? text : "---");
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lbl.setForeground(AppColors.TEXT_PRIMARY);
-        return lbl;
-    }
-
-    // ================================================================
-    //  VOID INVOICE (Hủy hóa đơn + hoàn kho)
-    // ================================================================
-    private void doVoidInvoice(int maHD) {
-        // Check current status
-        int row = table.getSelectedRow();
-        if (row < 0) return;
-        String currentStatus = tableModel.getValueAt(row, 8).toString();
-        if (currentStatus.contains("hủy") || currentStatus.contains("Hủy")) {
-            JOptionPane.showMessageDialog(this, "Hóa đơn này đã bị hủy trước đó.",
-                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        // Ask reason
-        String lyDo = JOptionPane.showInputDialog(this,
-                "Nhập lý do hủy hóa đơn #" + maHD + ":",
-                "Hủy hóa đơn", JOptionPane.WARNING_MESSAGE);
-        if (lyDo == null || lyDo.trim().isEmpty()) return;
-
-        // Confirm
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Xác nhận HỦY hóa đơn #" + maHD + "?\n\n" +
-                "Lý do: " + lyDo + "\n\n" +
-                "Thao tác này sẽ:\n" +
-                "- Đổi trạng thái hóa đơn thành 'Đã hủy'\n" +
-                "- Hoàn trả số lượng tồn kho về các lô hàng\n\n" +
-                "Không thể hoàn tác!",
-                "Xác nhận hủy", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) return;
-
-        // Execute transaction
-        try (Connection conn = DatabaseHelper.getConnection()) {
-            conn.setAutoCommit(false);
-            try {
-                // 1. Update invoice status
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE HoaDon SET TrangThai = N'Da huy', LyDoHuy = ? WHERE MaHD = ? AND TrangThai = N'Thanh cong'")) {
-                    ps.setNString(1, lyDo.trim());
-                    ps.setInt(2, maHD);
-                    int updated = ps.executeUpdate();
-                    if (updated == 0) throw new SQLException("Hóa đơn đã bị hủy hoặc không tồn tại.");
-                }
-
-                // 2. Restore batch quantities (hoàn kho)
-                String sqlDetails = "SELECT MaLo, SoLuong FROM ChiTietHoaDon WHERE MaHD = ?";
-                try (PreparedStatement ps = conn.prepareStatement(sqlDetails)) {
-                    ps.setInt(1, maHD);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        PreparedStatement psUpdate = conn.prepareStatement(
-                                "UPDATE LoHang SET SoLuong = SoLuong + ? WHERE MaLo = ?");
-                        while (rs.next()) {
-                            int maLo = rs.getInt("MaLo");
-                            int soLuong = rs.getInt("SoLuong");
-                            psUpdate.setInt(1, soLuong);
-                            psUpdate.setInt(2, maLo);
-                            psUpdate.executeUpdate();
-                        }
-                        psUpdate.close();
-                    }
-                }
-
-                conn.commit();
-                JOptionPane.showMessageDialog(this,
-                        "Đã hủy hóa đơn #" + maHD + " thành công.\nSố lượng tồn kho đã được hoàn trả.",
-                        "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                loadInvoices(); // refresh
-
-            } catch (SQLException ex) {
-                conn.rollback();
-                throw ex;
-            } finally {
-                conn.setAutoCommit(true);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi hủy hóa đơn: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
     }
 }

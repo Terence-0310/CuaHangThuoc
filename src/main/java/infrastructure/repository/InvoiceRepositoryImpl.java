@@ -150,12 +150,43 @@ public class InvoiceRepositoryImpl implements IInvoiceRepository {
 
     @Override
     public void voidInvoice(int maHD, String reason) throws SQLException {
-        String sql = "UPDATE HoaDon SET TrangThai = N'Da huy', LyDoHuy = ? WHERE MaHD = ?";
-        try (Connection conn = DatabaseHelper.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setNString(1, reason);
-            ps.setInt(2, maHD);
-            ps.executeUpdate();
+        try (Connection conn = DatabaseHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // 1. Update invoice status (only if currently 'Thanh cong')
+                String sqlUpdate = "UPDATE HoaDon SET TrangThai = N'Da huy', LyDoHuy = ? WHERE MaHD = ? AND TrangThai = N'Thanh cong'";
+                try (PreparedStatement ps = conn.prepareStatement(sqlUpdate)) {
+                    ps.setNString(1, reason);
+                    ps.setInt(2, maHD);
+                    int updated = ps.executeUpdate();
+                    if (updated == 0) throw new SQLException("Hóa đơn đã bị hủy hoặc không tồn tại.");
+                }
+
+                // 2. Restore batch quantities (hoàn kho)
+                String sqlDetails = "SELECT MaLo, SoLuong FROM ChiTietHoaDon WHERE MaHD = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sqlDetails)) {
+                    ps.setInt(1, maHD);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        PreparedStatement psUpdate = conn.prepareStatement(
+                                "UPDATE LoHang SET SoLuong = SoLuong + ? WHERE MaLo = ?");
+                        while (rs.next()) {
+                            int maLo = rs.getInt("MaLo");
+                            int soLuong = rs.getInt("SoLuong");
+                            psUpdate.setInt(1, soLuong);
+                            psUpdate.setInt(2, maLo);
+                            psUpdate.executeUpdate();
+                        }
+                        psUpdate.close();
+                    }
+                }
+
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 
