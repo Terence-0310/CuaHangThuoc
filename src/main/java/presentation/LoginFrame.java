@@ -100,7 +100,7 @@ public class LoginFrame extends JFrame {
         card.add(Box.createRigidArea(new Dimension(0, 14)));
 
         // --- Footer hint ---
-        JLabel lblHint = new JLabel("admin / admin123  ·  nhanvien01 / nv123");
+        JLabel lblHint = new JLabel();
         lblHint.setFont(new Font("Segoe UI", Font.ITALIC, 11));
         lblHint.setForeground(AppColors.SECONDARY_LIGHT);
         lblHint.setAlignmentX(Component.CENTER_ALIGNMENT);
