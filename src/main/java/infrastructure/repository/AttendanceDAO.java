@@ -106,12 +106,15 @@ public class AttendanceDAO {
         }
     }
 
-    /** Nhận ca — SNAPSHOT: Chụp HourlyRate + giờ ca tại thời điểm nhận ca */
+    /** Nhận ca — SNAPSHOT: Chụp HourlyRate, OvertimeRate, giờ ca + giờ mặc định ca tại thời điểm nhận ca */
     public void clockIn(int empID, int scheduleID, String lateReason) {
-        String sql = "INSERT INTO HR_Attendances (EmpID, ScheduleID, ClockIn, LateReason, SnapshotRate, SnapshotStart, SnapshotEnd) " +
-                     "SELECT ?, s.ScheduleID, GETDATE(), ?, e.HourlyRate, s.ActualStart, s.ActualEnd " +
+        String sql = "INSERT INTO HR_Attendances (EmpID, ScheduleID, ClockIn, LateReason, " +
+                     "SnapshotRate, SnapshotOTRate, SnapshotStart, SnapshotEnd, ShiftDefaultEnd) " +
+                     "SELECT ?, s.ScheduleID, GETDATE(), ?, " +
+                     "e.HourlyRate, e.OvertimeRate, s.ActualStart, s.ActualEnd, sh.DefaultEndTime " +
                      "FROM HR_Schedules s " +
                      "JOIN HR_Employees e ON e.EmpID = ? " +
+                     "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.ScheduleID = ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -227,17 +230,35 @@ public class AttendanceDAO {
         return null;
     }
 
-    /** Kết ca & Tính lương (POST-AUDIT OVERTIME: KHÔNG CAPPING) */
+    /** Kết ca & Tính lương — TỰ ĐỘNG TÁCH GIỜ THƯỜNG / TĂNG CA */
     public void clockOut(int empID, String overtimeReason) {
-        String sqlUpdateClockOut = 
-            "UPDATE a SET a.ClockOut = GETDATE(), " +
-            "a.TotalHours = ROUND(DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0, 2), " +
-            "a.LateReason = ISNULL(a.LateReason, '') + ? " +
+        // Step 1: ClockOut + TotalHours + OvertimeHours
+        String sqlUpdateClockOut =
+            "UPDATE a SET " +
+            "  a.ClockOut = GETDATE(), " +
+            "  a.TotalHours = ROUND(DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0, 2), " +
+            // OT = max(0, totalMinutes - defaultShiftMinutes)
+            // DefaultShiftMinutes = DATEDIFF(MINUTE, SnapshotStart, ShiftDefaultEnd) — adjusted for cross-midnight
+            "  a.OvertimeHours = CASE " +
+            "    WHEN a.ShiftDefaultEnd IS NOT NULL THEN " +
+            "      ROUND(GREATEST(0, " +
+            "        DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0 - " +
+            "        DATEDIFF(MINUTE, a.SnapshotStart, " +
+            "          CASE WHEN a.ShiftDefaultEnd < a.SnapshotStart " +
+            "               THEN DATEADD(DAY, 1, CAST(a.ShiftDefaultEnd AS DATETIME)) " +
+            "               ELSE CAST(a.ShiftDefaultEnd AS DATETIME) END" +
+            "        ) / 60.0" +
+            "      ), 2) " +
+            "    ELSE 0 END, " +
+            "  a.LateReason = ISNULL(a.LateReason, '') + ? " +
             "FROM HR_Attendances a " +
             "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL";
 
-        String sqlUpdateMoney = 
-            "UPDATE a SET a.DailyEarned = a.TotalHours * a.SnapshotRate " +
+        // Step 2: DailyEarned = regularHrs * rate + OT * otRate
+        String sqlUpdateMoney =
+            "UPDATE a SET a.DailyEarned = " +
+            "  (a.TotalHours - a.OvertimeHours) * a.SnapshotRate + " +
+            "  a.OvertimeHours * ISNULL(a.SnapshotOTRate, a.SnapshotRate) " +
             "FROM HR_Attendances a " +
             "WHERE a.EmpID = ? AND a.ClockIn IS NOT NULL AND CAST(a.ClockOut AS DATE) = CAST(GETDATE() AS DATE)";
 
@@ -245,7 +266,7 @@ public class AttendanceDAO {
             conn.setAutoCommit(false);
             try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateClockOut);
                  PreparedStatement ps2 = conn.prepareStatement(sqlUpdateMoney)) {
-                
+
                 String extra = (overtimeReason != null && !overtimeReason.trim().isEmpty()) ? " | Tăng ca: " + overtimeReason.trim() : "";
                 ps1.setString(1, extra);
                 ps1.setInt(2, empID);
@@ -256,7 +277,7 @@ public class AttendanceDAO {
 
                 ps2.setInt(1, empID);
                 ps2.executeUpdate();
-                
+
                 conn.commit();
             } catch (SQLException ex) {
                 conn.rollback();
