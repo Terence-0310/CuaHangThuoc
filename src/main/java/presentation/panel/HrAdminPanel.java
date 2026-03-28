@@ -741,12 +741,13 @@ public class HrAdminPanel extends JPanel {
         for (Shift s : hrService.getAllShifts()) {
             String loai;
             String name = s.getShiftName();
+            boolean isLeave = false;
             if (name.equals("Nghỉ Phép Tuần")) {
-                loai = "Nghỉ Phép Tuần";
+                loai = "Nghỉ Phép Tuần"; isLeave = true;
             } else if (name.equals("Nghỉ Phép Năm")) {
-                loai = "Nghỉ Phép Năm";
+                loai = "Nghỉ Phép Năm"; isLeave = true;
             } else if (name.contains("Không Lương")) {
-                loai = "Không Lương";
+                loai = "Không Lương"; isLeave = true;
             } else {
                 loai = "Ca Làm Việc";
             }
@@ -754,8 +755,8 @@ public class HrAdminPanel extends JPanel {
                 s.getShiftID(),
                 s.getShiftName(),
                 loai,
-                s.getStartTime().toString(),
-                s.getEndTime().toString()
+                isLeave ? "—" : s.getStartTime().toString(),
+                isLeave ? "—" : s.getEndTime().toString()
             });
         }
     }
