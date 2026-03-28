@@ -195,18 +195,31 @@ public class AttendanceDAO {
     }
 
     /**
-     * Lấy giờ kết ca theo lịch (SnapshotEnd) cho ca đang mở.
-     * Dùng để kiểm tra NV kết ca sớm.
+     * Lấy giờ kết ca theo lịch (WorkDate + SnapshotEnd) cho ca đang mở.
+     * Trả về LocalDateTime để so sánh chính xác kể cả qua nửa đêm.
      */
-    public java.time.LocalTime getActiveShiftEndTime(int empID) {
-        String sql = "SELECT a.SnapshotEnd FROM HR_Attendances a WHERE a.EmpID = ? AND a.ClockOut IS NULL";
+    public java.time.LocalDateTime getActiveShiftEndDateTime(int empID) {
+        String sql = "SELECT s.WorkDate, a.SnapshotStart, a.SnapshotEnd " +
+                     "FROM HR_Attendances a " +
+                     "JOIN HR_Schedules s ON a.ScheduleID = s.ScheduleID " +
+                     "WHERE a.EmpID = ? AND a.ClockOut IS NULL";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empID);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                Time t = rs.getTime("SnapshotEnd");
-                return t != null ? t.toLocalTime() : null;
+                java.sql.Date wd = rs.getDate("WorkDate");
+                Time start = rs.getTime("SnapshotStart");
+                Time end = rs.getTime("SnapshotEnd");
+                if (wd != null && end != null) {
+                    java.time.LocalDate workDate = wd.toLocalDate();
+                    java.time.LocalTime endTime = end.toLocalTime();
+                    // Nếu giờ kết < giờ bắt đầu → ca qua nửa đêm → cộng 1 ngày
+                    if (start != null && endTime.isBefore(start.toLocalTime())) {
+                        workDate = workDate.plusDays(1);
+                    }
+                    return java.time.LocalDateTime.of(workDate, endTime);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);

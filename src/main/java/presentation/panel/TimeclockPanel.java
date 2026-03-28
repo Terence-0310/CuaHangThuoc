@@ -270,17 +270,17 @@ public class TimeclockPanel extends JPanel {
                 return;
             }
 
-            // ★ RULE: KẾT CA SỚM → Cảnh báo + yêu cầu lý do
+            // ★ RULE: KẾT CA SỚM → Cảnh báo + yêu cầu lý do (so sánh DateTime để tránh lỗi qua nửa đêm)
             String earlyReason = null;
-            LocalTime scheduledEnd = attendanceDAO.getActiveShiftEndTime(emp.getEmpID());
-            LocalTime now = LocalTime.now();
+            java.time.LocalDateTime scheduledEndDT = attendanceDAO.getActiveShiftEndDateTime(emp.getEmpID());
+            java.time.LocalDateTime nowDT = java.time.LocalDateTime.now();
 
-            if (scheduledEnd != null && now.isBefore(scheduledEnd)) {
-                long minutesEarly = java.time.Duration.between(now, scheduledEnd).toMinutes();
+            if (scheduledEndDT != null && nowDT.isBefore(scheduledEndDT)) {
+                long minutesEarly = java.time.Duration.between(nowDT, scheduledEndDT).toMinutes();
 
                 int confirm = JOptionPane.showConfirmDialog(this,
                     "CẢNH BÁO: KẾT CA SỚM!\n\n" +
-                    emp.getFullName() + ", giờ kết ca quy định là " + scheduledEnd.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
+                    emp.getFullName() + ", giờ kết ca quy định là " + scheduledEndDT.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
                     "Bạn đang kết ca sớm " + minutesEarly + " phút.\n\n" +
                     "Bạn có chắc muốn kết ca sớm?",
                     "Kết Ca Sớm", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
