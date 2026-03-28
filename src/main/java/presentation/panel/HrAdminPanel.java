@@ -1221,18 +1221,20 @@ public class HrAdminPanel extends JPanel {
                     "Xác nhận xếp ca", JOptionPane.YES_NO_OPTION);
             if (confirm != JOptionPane.YES_OPTION) return;
             try {
-                // === LEAVE QUOTA VALIDATION ===
+                // === LEAVE QUOTA VALIDATION (Dynamic — Realtime từ DB) ===
                 String shiftName = shift.getShiftName();
 
                 // --- NGHỈ PHÉP NĂM ---
                 if (shiftName.equals("Nghỉ Phép Năm")) {
-                    int usedYear = hrService.getUsedAnnualLeave(empID, from.getYear());
-                    int annualTotal = emp.getAnnualLeaveTotal();
-                    if (usedYear + totalDays > annualTotal) {
-                        showWarning("NV " + emp.getFullName() + " đã vượt quá hạn mức phép NĂM (" + annualTotal + " ngày).\n" +
-                                "Bao gồm: " + hrService.getDefaultAnnualLeave() + " ngày gốc + " + emp.getYearsWorked() + " năm thâm niên.\n" +
-                                "Phép năm đã dùng: " + usedYear + " ngày.\n" +
-                                "Đang xin thêm: " + totalDays + " ngày.\n" +
+                    java.util.Map<String, Integer> balance = hrService.getLeaveBalance(empID);
+                    int remaining = balance.get("RemainingAnnualLeave");
+                    if (remaining < totalDays) {
+                        showWarning("NV " + emp.getFullName() + " đã hết phép NĂM!\n" +
+                                "Hạn mức: " + balance.get("AnnualLeaveTotal") + " ngày " +
+                                "(gốc " + balance.get("DefaultAnnualLeave") + " + thâm niên " + balance.get("YearsWorked") + " năm)\n" +
+                                "Đã dùng: " + balance.get("UsedAnnualLeave") + " ngày\n" +
+                                "Còn lại: " + remaining + " ngày\n" +
+                                "Đang xin: " + totalDays + " ngày\n\n" +
                                 "Vui lòng chuyển thành Nghỉ Không Lương!");
                         return;
                     }
@@ -1240,24 +1242,29 @@ public class HrAdminPanel extends JPanel {
 
                 // --- NGHỈ PHÉP TUẦN ---
                 if (shiftName.equals("Nghỉ Phép Tuần")) {
-                    int defaultWeekly = hrService.getDefaultWeeklyLeave();
                     java.time.LocalDate checkDate = from;
                     while (!checkDate.isAfter(to)) {
                         java.time.LocalDate monday = checkDate.with(java.time.DayOfWeek.MONDAY);
                         java.time.LocalDate sunday = monday.plusDays(6);
+
+                        // Đếm số ngày nghỉ ĐANG XIN trong tuần này
                         int daysInThisWeek = 0;
                         java.time.LocalDate d = from.isAfter(monday) ? from : monday;
                         java.time.LocalDate rangeEnd = to.isBefore(sunday) ? to : sunday;
                         while (!d.isAfter(rangeEnd)) { daysInThisWeek++; d = d.plusDays(1); }
 
-                        int usedWeek = hrService.getUsedWeeklyLeave(empID, checkDate);
-                        if (usedWeek + daysInThisWeek > defaultWeekly) {
+                        // Query balance realtime cho tuần cụ thể
+                        java.util.Map<String, Integer> balance = hrService.getLeaveBalanceForWeek(empID, checkDate);
+                        int remaining = balance.get("RemainingWeeklyLeave");
+
+                        if (remaining < daysInThisWeek) {
                             java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
-                            showWarning("NV " + emp.getFullName() + " sẽ vượt hạn mức phép TUẦN " +
-                                    monday.format(fmt) + " - " + sunday.format(fmt) +
-                                    " (" + defaultWeekly + " ngày/tuần).\n" +
-                                    "Phép tuần đã dùng: " + usedWeek + " ngày.\n" +
-                                    "Đang xin thêm: " + daysInThisWeek + " ngày.\n" +
+                            showWarning("NV " + emp.getFullName() + " đã hết phép TUẦN " +
+                                    monday.format(fmt) + " - " + sunday.format(fmt) + "!\n" +
+                                    "Hạn mức: " + balance.get("DefaultWeeklyLeave") + " ngày/tuần\n" +
+                                    "Đã dùng: " + balance.get("UsedWeeklyLeave") + " ngày\n" +
+                                    "Còn lại: " + remaining + " ngày\n" +
+                                    "Đang xin: " + daysInThisWeek + " ngày\n\n" +
                                     "Vui lòng chuyển thành Nghỉ Không Lương!");
                             return;
                         }

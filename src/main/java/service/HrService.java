@@ -109,7 +109,18 @@ public class HrService {
         hrDAO.updateSchedule(scheduleID, empID, shiftID, workDate, actualStart, actualEnd);
     }
 
-    // === LEAVE QUOTA ===
+    // === LEAVE QUOTA (Dynamic Calculation) ===
+
+    /** Tính phép động — trả Map đầy đủ (tuần hiện tại) */
+    public java.util.Map<String, Integer> getLeaveBalance(int empId) {
+        return hrDAO.getLeaveBalance(empId);
+    }
+
+    /** Tính phép động cho 1 tuần cụ thể */
+    public java.util.Map<String, Integer> getLeaveBalanceForWeek(int empId, java.time.LocalDate anyDay) {
+        return hrDAO.getLeaveBalanceForWeek(empId, anyDay);
+    }
+
     public int getUsedWeeklyLeave(int empId, java.time.LocalDate anyDay) {
         return hrDAO.getUsedWeeklyLeave(empId, anyDay);
     }

@@ -261,34 +261,104 @@ public class HrDAO {
     }
 
     // ==============================================================
-    //  MODULE: DYNAMIC LEAVE CALCULATOR
+    //  MODULE: DYNAMIC LEAVE CALCULATOR (ERP Standard)
+    //  Tất cả phép được tính realtime từ DB, không dùng biến đếm tĩnh
     // ==============================================================
 
-    private void fillDynamicLeave(Employee emp) {
+    /**
+     * Tính toán phép động (Dynamic Leave Calculation).
+     * Trả về Map chứa tất cả thông số phép hiện tại của NV.
+     *
+     * Keys:
+     *   - "DefaultWeeklyLeave"     : int - Hạn mức phép tuần từ HR_Config
+     *   - "DefaultAnnualLeave"     : int - Hạn mức phép năm gốc từ HR_Config
+     *   - "YearsWorked"            : int - Số năm thâm niên
+     *   - "AnnualLeaveTotal"       : int - Tổng phép năm = gốc + thâm niên
+     *   - "UsedWeeklyLeave"        : int - Số phép tuần ĐÃ DÙNG (tuần hiện tại)
+     *   - "UsedAnnualLeave"        : int - Số phép năm ĐÃ DÙNG (năm hiện tại)
+     *   - "RemainingWeeklyLeave"   : int - Phép tuần CÒN LẠI
+     *   - "RemainingAnnualLeave"   : int - Phép năm CÒN LẠI
+     */
+    public java.util.Map<String, Integer> getLeaveBalance(int empId) {
+        java.util.Map<String, Integer> balance = new java.util.LinkedHashMap<>();
+
+        // 1. LẤY CONFIG GỐC
         int defaultWeekly = getDefaultWeeklyLeave();
         int defaultAnnual = getDefaultAnnualLeave();
+        balance.put("DefaultWeeklyLeave", defaultWeekly);
+        balance.put("DefaultAnnualLeave", defaultAnnual);
+
+        // 2. TÍNH THÂM NIÊN (YearsWorked)
         int yearsWorked = 0;
-        if (emp.getHireDate() != null) {
-            LocalDate endDate = emp.getResignDate() != null ? emp.getResignDate() : LocalDate.now();
-            yearsWorked = java.time.Period.between(emp.getHireDate(), endDate).getYears();
+        String sqlSeniority =
+            "SELECT DATEDIFF(YEAR, HireDate, GETDATE()) AS YearsWorked " +
+            "FROM HR_Employees WHERE EmpID = ? AND HireDate IS NOT NULL";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sqlSeniority)) {
+            ps.setInt(1, empId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                yearsWorked = Math.max(0, rs.getInt("YearsWorked"));
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        balance.put("YearsWorked", yearsWorked);
+
+        // 3. TỔNG PHÉP NĂM = gốc + thâm niên
+        int annualTotal = defaultAnnual + yearsWorked;
+        balance.put("AnnualLeaveTotal", annualTotal);
+
+        // 4. ĐẾM PHÉP TUẦN ĐÃ DÙNG (tuần hiện tại: Mon → Sun)
+        int usedWeekly = getUsedWeeklyLeave(empId, LocalDate.now());
+        balance.put("UsedWeeklyLeave", usedWeekly);
+
+        // 5. ĐẾM PHÉP NĂM ĐÃ DÙNG (năm hiện tại)
+        int usedAnnual = getUsedAnnualLeave(empId, LocalDate.now().getYear());
+        balance.put("UsedAnnualLeave", usedAnnual);
+
+        // 6. TÍNH CÒN LẠI
+        balance.put("RemainingWeeklyLeave", defaultWeekly - usedWeekly);
+        balance.put("RemainingAnnualLeave", annualTotal - usedAnnual);
+
+        return balance;
+    }
+
+    /**
+     * Tính phép tuần còn lại cho 1 tuần CỤ THỂ (dùng khi xếp ca nhiều tuần).
+     * @param anyDay bất kỳ ngày nào trong tuần cần kiểm tra
+     */
+    public java.util.Map<String, Integer> getLeaveBalanceForWeek(int empId, LocalDate anyDay) {
+        java.util.Map<String, Integer> balance = getLeaveBalance(empId);
+        // Override weekly với tuần cụ thể (thay vì tuần hiện tại)
+        int usedWeekly = getUsedWeeklyLeave(empId, anyDay);
+        balance.put("UsedWeeklyLeave", usedWeekly);
+        balance.put("RemainingWeeklyLeave", balance.get("DefaultWeeklyLeave") - usedWeekly);
+        return balance;
+    }
+
+    private void fillDynamicLeave(Employee emp) {
+        java.util.Map<String, Integer> balance = getLeaveBalance(emp.getEmpID());
+        int yearsWorked = balance.get("YearsWorked");
+        if (emp.getHireDate() != null && emp.getResignDate() != null) {
+            yearsWorked = java.time.Period.between(emp.getHireDate(), emp.getResignDate()).getYears();
         }
         emp.setYearsWorked(yearsWorked);
-        int annualTotal = defaultAnnual + yearsWorked;
-        emp.setAnnualLeaveTotal(annualTotal);
-        int usedAnnual = getUsedAnnualLeave(emp.getEmpID(), LocalDate.now().getYear());
-        emp.setAnnualLeaveRemaining(annualTotal - usedAnnual);
-        int usedWeekly = getUsedWeeklyLeave(emp.getEmpID(), LocalDate.now());
-        emp.setWeeklyLeaveRemaining(defaultWeekly - usedWeekly);
+        emp.setAnnualLeaveTotal(balance.get("AnnualLeaveTotal"));
+        emp.setAnnualLeaveRemaining(balance.get("RemainingAnnualLeave"));
+        emp.setWeeklyLeaveRemaining(balance.get("RemainingWeeklyLeave"));
     }
 
     public int getUsedWeeklyLeave(int empId, LocalDate anyDay) {
         LocalDate monday = anyDay.with(java.time.DayOfWeek.MONDAY);
         LocalDate sunday = monday.plusDays(6);
-        String sql = "SELECT COUNT(*) FROM HR_Schedules s JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
-                     "WHERE s.EmpID = ? AND sh.ShiftName = N'Nghỉ Phép Tuần' AND s.WorkDate BETWEEN ? AND ?";
+        String sql = "SELECT COUNT(*) FROM HR_Schedules s " +
+                     "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
+                     "WHERE s.EmpID = ? AND sh.ShiftName = N'Nghỉ Phép Tuần' " +
+                     "AND s.WorkDate BETWEEN ? AND ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, empId); ps.setDate(2, Date.valueOf(monday)); ps.setDate(3, Date.valueOf(sunday));
+            ps.setInt(1, empId);
+            ps.setDate(2, Date.valueOf(monday));
+            ps.setDate(3, Date.valueOf(sunday));
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) { throw new RuntimeException(e); }
@@ -296,11 +366,14 @@ public class HrDAO {
     }
 
     public int getUsedAnnualLeave(int empId, int year) {
-        String sql = "SELECT COUNT(*) FROM HR_Schedules s JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
-                     "WHERE s.EmpID = ? AND sh.ShiftName = N'Nghỉ Phép Năm' AND YEAR(s.WorkDate) = ?";
+        String sql = "SELECT COUNT(*) FROM HR_Schedules s " +
+                     "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
+                     "WHERE s.EmpID = ? AND sh.ShiftName = N'Nghỉ Phép Năm' " +
+                     "AND YEAR(s.WorkDate) = ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, empId); ps.setInt(2, year);
+            ps.setInt(1, empId);
+            ps.setInt(2, year);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) { throw new RuntimeException(e); }
