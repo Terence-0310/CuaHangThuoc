@@ -40,6 +40,7 @@ public class AttendanceDAO {
                      "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.EmpID = ? " +
                      "  AND s.WorkDate = CAST(GETDATE() AS DATE) " +
+                     "  AND s.ActualStart IS NOT NULL " +
                      "  AND NOT EXISTS (SELECT 1 FROM HR_Attendances a WHERE a.ScheduleID = s.ScheduleID) " +
                      "ORDER BY s.ActualStart ASC";
         try (Connection conn = DatabaseHelper.getConnection();
@@ -71,6 +72,7 @@ public class AttendanceDAO {
                      "JOIN HR_Employees e ON s.EmpID = e.EmpID " +
                      "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.WorkDate = CAST(GETDATE() AS DATE) " +
+                     "  AND s.ActualStart IS NOT NULL " +
                      "  AND NOT EXISTS (SELECT 1 FROM HR_Attendances a WHERE a.ScheduleID = s.ScheduleID) " +
                      "ORDER BY s.ActualStart ASC";
         try (Connection conn = DatabaseHelper.getConnection();
@@ -313,6 +315,7 @@ public class AttendanceDAO {
             "JOIN HR_Employees e ON s.EmpID = e.EmpID " +
             "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
             "WHERE NOT EXISTS (SELECT 1 FROM HR_Attendances a WHERE a.ScheduleID = s.ScheduleID) " +
+            "  AND s.ActualStart IS NOT NULL " +
             "  AND DATEADD(MINUTE, " +
             "      DATEDIFF(MINUTE, 0, s.ActualEnd) + CASE WHEN s.ActualEnd < s.ActualStart THEN 1440 ELSE 0 END, " +
             "      CAST(s.WorkDate AS DATETIME)) < GETDATE()";

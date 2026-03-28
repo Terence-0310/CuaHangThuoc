@@ -1093,20 +1093,36 @@ public class HrAdminPanel extends JPanel {
     }
 
     @SuppressWarnings("deprecation")
+    /** Kiểm tra ca có phải loại nghỉ phép không */
+    private boolean isLeaveShift(Shift s) {
+        String name = s.getShiftName();
+        return name.equals("Nghỉ Phép Tuần") || name.equals("Nghỉ Phép Năm") || name.contains("Không Lương");
+    }
+
     private void autoFillShiftTimes() {
         int idx = cboSchedShift.getSelectedIndex();
         if (idx < 0 || idx >= shiftList.size()) return;
         Shift s = shiftList.get(idx);
-        java.util.Date sd = new java.util.Date();
-        sd.setHours(s.getStartTime().getHour());
-        sd.setMinutes(s.getStartTime().getMinute());
-        sd.setSeconds(0);
-        java.util.Date ed = new java.util.Date();
-        ed.setHours(s.getEndTime().getHour());
-        ed.setMinutes(s.getEndTime().getMinute());
-        ed.setSeconds(0);
-        spnActualStart.setValue(sd);
-        spnActualEnd.setValue(ed);
+
+        if (isLeaveShift(s)) {
+            // Ca nghỉ: khóa spinner, ko cho nhập giờ
+            spnActualStart.setEnabled(false);
+            spnActualEnd.setEnabled(false);
+        } else {
+            // Ca làm việc: mở spinner, tự điền giờ mặc định
+            spnActualStart.setEnabled(true);
+            spnActualEnd.setEnabled(true);
+            java.util.Date sd = new java.util.Date();
+            sd.setHours(s.getStartTime().getHour());
+            sd.setMinutes(s.getStartTime().getMinute());
+            sd.setSeconds(0);
+            java.util.Date ed = new java.util.Date();
+            ed.setHours(s.getEndTime().getHour());
+            ed.setMinutes(s.getEndTime().getMinute());
+            ed.setSeconds(0);
+            spnActualStart.setValue(sd);
+            spnActualEnd.setValue(ed);
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -1167,11 +1183,19 @@ public class HrAdminPanel extends JPanel {
         LocalDate from = dpFrom.getDate();
         if (from == null) { showWarning("Chọn ngày bắt đầu!"); return; }
         int empID = activeEmployees.get(cboSchedEmp.getSelectedIndex()).getEmpID();
-        int shiftID = shiftList.get(cboSchedShift.getSelectedIndex()).getShiftID();
-        java.util.Date sv = (java.util.Date) spnActualStart.getValue();
-        java.util.Date ev = (java.util.Date) spnActualEnd.getValue();
-        LocalTime actualStart = LocalTime.of(sv.getHours(), sv.getMinutes());
-        LocalTime actualEnd = LocalTime.of(ev.getHours(), ev.getMinutes());
+        Shift selectedShift = shiftList.get(cboSchedShift.getSelectedIndex());
+        int shiftID = selectedShift.getShiftID();
+        boolean isLeave = isLeaveShift(selectedShift);
+
+        // Ca nghỉ: ActualStart/ActualEnd = null (không có giờ làm)
+        LocalTime actualStart = null;
+        LocalTime actualEnd = null;
+        if (!isLeave) {
+            java.util.Date sv = (java.util.Date) spnActualStart.getValue();
+            java.util.Date ev = (java.util.Date) spnActualEnd.getValue();
+            actualStart = LocalTime.of(sv.getHours(), sv.getMinutes());
+            actualEnd = LocalTime.of(ev.getHours(), ev.getMinutes());
+        }
 
         // ★ CHẶN: Không cho tạo/sửa lịch cho ngày/giờ đã qua
         LocalDate today = LocalDate.now();
@@ -1181,7 +1205,7 @@ public class HrAdminPanel extends JPanel {
                     "Hôm nay: " + today.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             return;
         }
-        if (from.isEqual(today) && LocalTime.now().isAfter(actualEnd)) {
+        if (!isLeave && from.isEqual(today) && actualEnd != null && LocalTime.now().isAfter(actualEnd)) {
             showWarning("Ca này đã kết thúc hôm nay!\n" +
                     "Giờ ra: " + actualEnd + " — Bây giờ: " + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
                     "Vui lòng chọn từ ngày mai trở đi.");

@@ -431,14 +431,15 @@ public class HrDAO {
                      "VALUES (?, ?, ?, ?, ?)";
         int inserted = 0;
         LocalDate today = LocalDate.now();
+        boolean isLeave = (actualStart == null || actualEnd == null);
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             LocalDate current = fromDate;
             while (!current.isAfter(toDate)) {
-                // ★ Bỏ qua ngày đã qua; nếu hôm nay thì bỏ qua ca đã kết thúc
+                // ★ Bỏ qua ngày đã qua; nếu hôm nay thì bỏ qua ca đã kết thúc (chỉ cho ca làm việc)
                 if (current.isBefore(today) ||
-                    (current.isEqual(today) && LocalTime.now().isAfter(actualEnd))) {
+                    (!isLeave && current.isEqual(today) && LocalTime.now().isAfter(actualEnd))) {
                     current = current.plusDays(1);
                     continue;
                 }
@@ -451,8 +452,13 @@ public class HrDAO {
                 ps.setInt(4, empID);
                 ps.setInt(5, shiftID);
                 ps.setDate(6, Date.valueOf(current));
-                ps.setTime(7, Time.valueOf(actualStart));
-                ps.setTime(8, Time.valueOf(actualEnd));
+                if (isLeave) {
+                    ps.setNull(7, java.sql.Types.TIME);
+                    ps.setNull(8, java.sql.Types.TIME);
+                } else {
+                    ps.setTime(7, Time.valueOf(actualStart));
+                    ps.setTime(8, Time.valueOf(actualEnd));
+                }
                 ps.addBatch();
 
                 current = current.plusDays(1);
@@ -548,8 +554,10 @@ public class HrDAO {
             ps.setInt(1, empID);
             ps.setInt(2, shiftID);
             ps.setDate(3, Date.valueOf(workDate));
-            ps.setTime(4, Time.valueOf(actualStart));
-            ps.setTime(5, Time.valueOf(actualEnd));
+            if (actualStart != null) ps.setTime(4, Time.valueOf(actualStart));
+            else ps.setNull(4, java.sql.Types.TIME);
+            if (actualEnd != null) ps.setTime(5, Time.valueOf(actualEnd));
+            else ps.setNull(5, java.sql.Types.TIME);
             ps.setInt(6, scheduleID);
             ps.executeUpdate();
         } catch (SQLException e) {
