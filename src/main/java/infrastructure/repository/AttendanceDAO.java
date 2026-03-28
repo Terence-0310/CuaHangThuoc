@@ -118,13 +118,39 @@ public class AttendanceDAO {
                      "JOIN HR_Employees e ON e.EmpID = ? " +
                      "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.ScheduleID = ?";
-        try (Connection conn = DatabaseHelper.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, empID);
-            ps.setString(2, lateReason);
-            ps.setInt(3, empID);
-            ps.setInt(4, scheduleID);
-            ps.executeUpdate();
+
+        // ★ Xóa leave schedule của NV trong ngày nếu có (NV đi làm thay → trả lại phép)
+        String sqlCancelLeave =
+            "DELETE FROM HR_Schedules WHERE EmpID = ? " +
+            "AND WorkDate = CAST(GETDATE() AS DATE) " +
+            "AND ActualStart IS NULL";  // Leave shifts = NULL times
+
+        try (Connection conn = DatabaseHelper.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                // 1. Insert attendance
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, empID);
+                    ps.setString(2, lateReason);
+                    ps.setInt(3, empID);
+                    ps.setInt(4, scheduleID);
+                    ps.executeUpdate();
+                }
+                // 2. Cancel leave schedule for today (if any)
+                try (PreparedStatement ps2 = conn.prepareStatement(sqlCancelLeave)) {
+                    ps2.setInt(1, empID);
+                    int cancelled = ps2.executeUpdate();
+                    if (cancelled > 0) {
+                        System.out.println("[clockIn] Đã hủy " + cancelled + " lịch nghỉ phép của NV " + empID + " (đi làm thay)");
+                    }
+                }
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi nhận ca: " + e.getMessage());
         }
