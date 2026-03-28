@@ -95,7 +95,7 @@ public class AttendanceDAO {
 
     /** Kiểm tra xem nhân viên có đang trong ca (đã Nhận ca, chưa Kết ca) không */
     public boolean isCurrentlyClockedIn(int empID) {
-        String sql = "SELECT 1 FROM HR_Attendances WHERE EmpID = ? AND ClockOut IS NULL";
+        String sql = "SELECT 1 FROM HR_Attendances WHERE EmpID = ? AND ClockOut IS NULL AND ClockIn IS NOT NULL";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empID);
@@ -137,7 +137,7 @@ public class AttendanceDAO {
             ") / 60.0 END, 2), " +
             "a.LateReason = ISNULL(a.LateReason, '') + ' | Hệ thống tự chốt do quên Kết Ca' " +
             "FROM HR_Attendances a " +
-            "WHERE a.EmpID = ? AND a.ClockOut IS NULL " +
+            "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL " +
             "  AND CAST(a.ClockIn AS DATE) < CAST(GETDATE() AS DATE)";
 
         String sqlMoney = 
@@ -179,7 +179,7 @@ public class AttendanceDAO {
             "          CAST(CAST(a.ClockIn AS DATE) AS DATETIME)) + CAST(a.SnapshotEnd AS DATETIME)" +
             "  ) / 60.0 as ScheduledHours " +
             "FROM HR_Attendances a " +
-            "WHERE a.EmpID = ? AND a.ClockOut IS NULL";
+            "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL";
         
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -202,7 +202,7 @@ public class AttendanceDAO {
         String sql = "SELECT s.WorkDate, a.SnapshotStart, a.SnapshotEnd " +
                      "FROM HR_Attendances a " +
                      "JOIN HR_Schedules s ON a.ScheduleID = s.ScheduleID " +
-                     "WHERE a.EmpID = ? AND a.ClockOut IS NULL";
+                     "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empID);
@@ -234,12 +234,12 @@ public class AttendanceDAO {
             "a.TotalHours = ROUND(DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0, 2), " +
             "a.LateReason = ISNULL(a.LateReason, '') + ? " +
             "FROM HR_Attendances a " +
-            "WHERE a.EmpID = ? AND a.ClockOut IS NULL";
+            "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL";
 
         String sqlUpdateMoney = 
             "UPDATE a SET a.DailyEarned = a.TotalHours * a.SnapshotRate " +
             "FROM HR_Attendances a " +
-            "WHERE a.EmpID = ? AND CAST(a.ClockOut AS DATE) = CAST(GETDATE() AS DATE)";
+            "WHERE a.EmpID = ? AND a.ClockIn IS NOT NULL AND CAST(a.ClockOut AS DATE) = CAST(GETDATE() AS DATE)";
 
         try (Connection conn = DatabaseHelper.getConnection()) {
             conn.setAutoCommit(false);
