@@ -12,16 +12,28 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * TimeclockPanel — Máy Chấm Công (V3)
+ *
+ * Rules:
+ * 1. Nhận ca: chỉ được phép 15 phút trước giờ bắt đầu ca
+ * 2. Không có ca nào hôm nay → không cho nhận ca
+ * 3. Đang trong ca → thông báo lỗi (đã có từ trước)
+ * 4. Kết ca sớm (trước giờ kết ca quy định) → cảnh báo + bắt điền lý do
+ * 5. Tăng ca (sau giờ quy định) → bắt điền lý do (đã có từ trước)
+ */
 public class TimeclockPanel extends JPanel {
     private JLabel lblClock;
     private JPasswordField txtPin;
     private JButton btnClockIn, btnClockOut;
     private AttendanceDAO attendanceDAO;
 
+    private static final int EARLY_MINUTES = 15; // Cho phép nhận ca trước 15 phút
+
     public TimeclockPanel() {
         attendanceDAO = new AttendanceDAO();
         setLayout(new BorderLayout());
-        setBackground(new Color(245, 245, 250)); // AppColors.NEUTRAL equivalent
+        setBackground(new Color(245, 245, 250));
         initComponents();
         startClock();
     }
@@ -114,8 +126,12 @@ public class TimeclockPanel extends JPanel {
             // Task 5: DỌN CA CÚP ĐIỆN (ZOMBIE SHIFT)
             attendanceDAO.closeZombieShifts(emp.getEmpID());
 
+            // Kiểm tra đang trong ca
             if (attendanceDAO.isCurrentlyClockedIn(emp.getEmpID())) {
-                JOptionPane.showMessageDialog(this, emp.getFullName() + " đang trong ca! Hãy Kết Ca trước khi Nhận Ca mới.", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                    emp.getFullName() + " đang trong ca!\n" +
+                    "Hãy Kết Ca trước khi Nhận Ca mới.",
+                    "Đang Trong Ca", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
@@ -124,18 +140,25 @@ public class TimeclockPanel extends JPanel {
             String lateReason = null;
 
             if (sched == null) {
-                // LOGIC: ĐI LÀM THAY (SMART SHIFT COVER)
-                int confirm = JOptionPane.showConfirmDialog(this, 
-                    "Bạn đi làm thay đúng không?", 
-                    "Xác nhận đi làm thay", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-                
-                if (confirm != JOptionPane.YES_OPTION) return;
-
+                // ★ RULE: Không có ca → kiểm tra ca làm thay
                 List<Schedule> unclocked = attendanceDAO.getUnclockedSchedulesToday();
                 if (unclocked.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Hôm nay không có ca nào đang trống để làm thay!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    // Hoàn toàn không có ca nào → BLOCK
+                    JOptionPane.showMessageDialog(this,
+                        "❌ " + emp.getFullName() + " không có ca nào được xếp hôm nay!\n" +
+                        "Và cũng không có ca trống nào để làm thay.\n\n" +
+                        "Liên hệ Quản lý để được xếp ca.",
+                        "KHÔNG CÓ CA", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
+
+                // Có ca trống → hỏi đi làm thay
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    emp.getFullName() + " không có ca riêng hôm nay.\n" +
+                    "Bạn muốn đi làm thay cho đồng nghiệp?",
+                    "Xác nhận đi làm thay", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+                if (confirm != JOptionPane.YES_OPTION) return;
 
                 String[] options = new String[unclocked.size()];
                 for (int i = 0; i < unclocked.size(); i++) {
@@ -143,23 +166,38 @@ public class TimeclockPanel extends JPanel {
                     options[i] = s.getEmpName() + " (" + s.getShiftName() + " " + s.getActualStart() + "-" + s.getActualEnd() + ")";
                 }
 
-                String choice = (String) JOptionPane.showInputDialog(this, 
-                        "Chọn người được bạn làm thay:", "Chọn ca làm thay", 
+                String choice = (String) JOptionPane.showInputDialog(this,
+                        "Chọn người được bạn làm thay:", "Chọn ca làm thay",
                         JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
                 if (choice == null) return; // Canceled
 
                 int selIdx = -1;
-                for (int i=0; i<options.length; i++) {
+                for (int i = 0; i < options.length; i++) {
                     if (options[i].equals(choice)) { selIdx = i; break; }
                 }
 
                 Schedule replacedSched = unclocked.get(selIdx);
+
+                // ★ RULE: Chỉ cho nhận ca trong 15p trước giờ bắt đầu
+                LocalTime now = LocalTime.now();
+                LocalTime allowedFrom = replacedSched.getActualStart().minusMinutes(EARLY_MINUTES);
+                if (now.isBefore(allowedFrom)) {
+                    long minutesLeft = java.time.Duration.between(now, allowedFrom).toMinutes();
+                    JOptionPane.showMessageDialog(this,
+                        "⏰ Chưa đến giờ nhận ca!\n\n" +
+                        "Ca: " + replacedSched.getShiftName() + " (" + replacedSched.getActualStart() + " - " + replacedSched.getActualEnd() + ")\n" +
+                        "Được phép nhận ca từ: " + allowedFrom.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
+                        "Còn " + minutesLeft + " phút nữa mới được chấm công.",
+                        "CHƯA ĐẾN GIỜ", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
                 targetScheduleId = replacedSched.getScheduleID();
                 lateReason = "Làm thay ca cho NV: " + replacedSched.getEmpName();
 
-                // Logic đi trễ (Late entry)
-                if (LocalTime.now().isAfter(replacedSched.getActualStart().plusMinutes(15))) {
+                // Logic đi trễ
+                if (now.isAfter(replacedSched.getActualStart().plusMinutes(15))) {
                     String extraReason = JOptionPane.showInputDialog(this, "Ca làm đã bắt đầu trễ hơn 15 phút. Nhập lý do đi trễ:");
                     if (extraReason == null || extraReason.trim().isEmpty()) {
                         JOptionPane.showMessageDialog(this, "Không cho nhận ca nếu bỏ trống lý do đi trễ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -168,10 +206,31 @@ public class TimeclockPanel extends JPanel {
                     lateReason += " | Lý do đi trễ: " + extraReason.trim();
                 }
             } else {
-                // LOGIC: ĐI LÀM ĐÚNG LỊCH (LATE ENTRY)
+                // LOGIC: ĐI LÀM ĐÚNG LỊCH
+
+                // ★ RULE: Chỉ cho nhận ca trong 15p trước giờ bắt đầu
+                LocalTime now = LocalTime.now();
+                LocalTime allowedFrom = sched.getActualStart().minusMinutes(EARLY_MINUTES);
+                if (now.isBefore(allowedFrom)) {
+                    long minutesLeft = java.time.Duration.between(now, allowedFrom).toMinutes();
+                    JOptionPane.showMessageDialog(this,
+                        "⏰ Chưa đến giờ nhận ca!\n\n" +
+                        "Xin chào " + emp.getFullName() + "\n" +
+                        "Ca của bạn: " + sched.getShiftName() + " (" + sched.getActualStart() + " - " + sched.getActualEnd() + ")\n" +
+                        "Được phép nhận ca từ: " + allowedFrom.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
+                        "Còn " + minutesLeft + " phút nữa mới được chấm công.\n\n" +
+                        "Cảm ơn bạn đến sớm! ☕",
+                        "CHƯA ĐẾN GIỜ", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
                 targetScheduleId = sched.getScheduleID();
-                if (LocalTime.now().isAfter(sched.getActualStart().plusMinutes(15))) {
-                    lateReason = JOptionPane.showInputDialog(this, "Bạn đi làm trễ hơn 15 phút so với quy định (" + sched.getActualStart() + "). Vui lòng nhập lý do:");
+
+                // LATE ENTRY (15p sau giờ bắt đầu)
+                if (now.isAfter(sched.getActualStart().plusMinutes(15))) {
+                    lateReason = JOptionPane.showInputDialog(this,
+                        "Bạn đi làm trễ hơn 15 phút so với quy định (" + sched.getActualStart() + ").\n" +
+                        "Vui lòng nhập lý do:");
                     if (lateReason == null || lateReason.trim().isEmpty()) {
                         JOptionPane.showMessageDialog(this, "Không cho nhận ca nếu bỏ trống lý do đi trễ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                         return;
@@ -180,15 +239,15 @@ public class TimeclockPanel extends JPanel {
             }
 
             attendanceDAO.clockIn(emp.getEmpID(), targetScheduleId, lateReason);
-            JOptionPane.showMessageDialog(this, "Nhận ca thành công!\nXin chào " + emp.getFullName() + 
-                    "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")", 
+            JOptionPane.showMessageDialog(this, "✅ Nhận ca thành công!\nXin chào " + emp.getFullName() +
+                    "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi khi Nhận ca: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         } finally {
-            txtPin.setText(""); // 1. Bấm xong BẮT BUỘC reset ô PIN
+            txtPin.setText("");
         }
     }
 
@@ -211,30 +270,69 @@ public class TimeclockPanel extends JPanel {
                 return;
             }
 
+            // ★ RULE: KẾT CA SỚM → Cảnh báo + yêu cầu lý do
+            String earlyReason = null;
+            LocalTime scheduledEnd = attendanceDAO.getActiveShiftEndTime(emp.getEmpID());
+            LocalTime now = LocalTime.now();
+
+            if (scheduledEnd != null && now.isBefore(scheduledEnd)) {
+                long minutesEarly = java.time.Duration.between(now, scheduledEnd).toMinutes();
+
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "⚠️ CẢNH BÁO: KẾT CA SỚM!\n\n" +
+                    emp.getFullName() + ", giờ kết ca quy định là " + scheduledEnd.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
+                    "Bạn đang kết ca sớm " + minutesEarly + " phút.\n\n" +
+                    "Bạn có chắc muốn kết ca sớm?",
+                    "Kết Ca Sớm", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+                if (confirm != JOptionPane.YES_OPTION) return;
+
+                earlyReason = JOptionPane.showInputDialog(this,
+                    "Vui lòng nhập lý do kết ca sớm (" + minutesEarly + " phút):\n" +
+                    "(Bắt buộc để truy vết)",
+                    "Lý Do Kết Ca Sớm", JOptionPane.WARNING_MESSAGE);
+
+                if (earlyReason == null || earlyReason.trim().isEmpty()) {
+                    JOptionPane.showMessageDialog(this,
+                        "Không cho kết ca nếu bỏ trống lý do!\nHãy tiếp tục làm việc.",
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                earlyReason = "Kết ca sớm " + minutesEarly + "p: " + earlyReason.trim();
+            }
+
             // Task 4: TĂNG CA HẬU KIỂM (POST-AUDIT OVERTIME)
             double[] preview = attendanceDAO.checkoutPreview(emp.getEmpID());
             String overtimeReason = null;
             if (preview != null && preview[0] > preview[1]) {
-                overtimeReason = JOptionPane.showInputDialog(this, 
-                    "Bạn đang làm lố giờ quy định. Vui lòng nhập lý do tăng ca:", 
+                overtimeReason = JOptionPane.showInputDialog(this,
+                    "Bạn đang làm lố giờ quy định. Vui lòng nhập lý do tăng ca:",
                     "Tăng ca hậu kiểm", JOptionPane.WARNING_MESSAGE);
-                
+
                 if (overtimeReason == null || overtimeReason.trim().isEmpty()) {
                     JOptionPane.showMessageDialog(this, "Bạn phải giải trình lý do tăng ca để được kết ca!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
             }
 
-            attendanceDAO.clockOut(emp.getEmpID(), overtimeReason);
-            JOptionPane.showMessageDialog(this, "Kết ca thành công!\nTạm biệt " + emp.getFullName() + 
-                    "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")", 
+            // Ghép lý do: early + overtime
+            String combinedReason = "";
+            if (earlyReason != null) combinedReason += earlyReason;
+            if (overtimeReason != null) {
+                if (!combinedReason.isEmpty()) combinedReason += " | ";
+                combinedReason += overtimeReason;
+            }
+
+            attendanceDAO.clockOut(emp.getEmpID(), combinedReason.isEmpty() ? overtimeReason : combinedReason);
+            JOptionPane.showMessageDialog(this, "✅ Kết ca thành công!\nTạm biệt " + emp.getFullName() +
+                    "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi khi Kết ca: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         } finally {
-            txtPin.setText(""); // 1. Bấm xong BẮT BUỘC reset ô PIN
+            txtPin.setText("");
         }
     }
 }

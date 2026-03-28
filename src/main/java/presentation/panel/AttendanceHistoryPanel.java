@@ -212,6 +212,12 @@ public class AttendanceHistoryPanel extends JPanel {
                 return;
             }
 
+            // ★ Tự động đánh dấu vắng mặt cho các ca đã qua mà NV không nhận ca
+            int absentMarked = attendanceDAO.markAbsentSchedules();
+            if (absentMarked > 0) {
+                System.out.println("[Attendance] Đã đánh dấu " + absentMarked + " ca vắng mặt.");
+            }
+
             fullDataList = attendanceDAO.getAttendanceWithRevenue(from, to);
             totalPages = Math.max(1, (int) Math.ceil((double) fullDataList.size() / PAGE_SIZE));
             currentPage = Math.min(currentPage, totalPages);
@@ -234,19 +240,32 @@ public class AttendanceHistoryPanel extends JPanel {
 
         for (int i = startIdx; i < endIdx; i++) {
             AttendanceHistory h = fullDataList.get(i);
-            String inTime = h.getClockIn() != null ? h.getClockIn().format(TIME_FORMAT) : "---";
-            String outTime = h.getClockOut() != null ? h.getClockOut().format(TIME_FORMAT) : "---";
 
-            // TotalHours format: Xg Yp
-            String totalHourStr = "0g 0p";
-            if (h.getTotalHours() != null) {
-                double decimalHours = h.getTotalHours().doubleValue();
-                int hrs = (int) decimalHours;
-                int mins = (int) Math.round((decimalHours - hrs) * 60);
-                totalHourStr = hrs + "g " + mins + "p";
+            // ★ Kiểm tra vắng mặt (ClockIn == null && reason chứa VẮNG)
+            boolean isAbsent = h.getClockIn() == null && h.getLateReason() != null
+                    && h.getLateReason().contains("VẮNG MẶT");
+
+            String inTime, outTime, totalHourStr, earnedStr;
+
+            if (isAbsent) {
+                inTime = "❌ VẮNG";
+                outTime = "❌ VẮNG";
+                totalHourStr = "0g 0p";
+                earnedStr = "0";
+            } else {
+                inTime = h.getClockIn() != null ? h.getClockIn().format(TIME_FORMAT) : "---";
+                outTime = h.getClockOut() != null ? h.getClockOut().format(TIME_FORMAT) : "---";
+                if (h.getTotalHours() != null) {
+                    double decimalHours = h.getTotalHours().doubleValue();
+                    int hrs = (int) decimalHours;
+                    int mins = (int) Math.round((decimalHours - hrs) * 60);
+                    totalHourStr = hrs + "g " + mins + "p";
+                } else {
+                    totalHourStr = "0g 0p";
+                }
+                earnedStr = h.getDailyEarned() != null ? String.format("%,.0f", h.getDailyEarned()) : "0";
             }
 
-            String earnedStr = h.getDailyEarned() != null ? String.format("%,.0f", h.getDailyEarned()) : "0";
             String invoiceCountStr = h.getInvoiceCount() > 0 ? String.valueOf(h.getInvoiceCount()) : "—";
             String revenueStr = h.getTotalRevenue() != null && h.getTotalRevenue().doubleValue() > 0
                     ? String.format("%,.0f", h.getTotalRevenue()) : "—";
@@ -438,7 +457,12 @@ public class AttendanceHistoryPanel extends JPanel {
             Object reasonObj = table.getModel().getValueAt(row, 10); // Cột Lý do (index 10)
             if (reasonObj != null) reason = reasonObj.toString().toLowerCase();
 
-            if (reason.contains("hệ thống tự chốt")) {
+            if (reason.contains("vắng mặt")) {
+                // ★ VẮNG MẶT: Nền đỏ nhạt + chữ đỏ đậm
+                c.setBackground(new Color(255, 220, 220));
+                c.setForeground(new Color(180, 0, 0));
+                c.setFont(c.getFont().deriveFont(Font.BOLD));
+            } else if (reason.contains("hệ thống tự chốt")) {
                 c.setBackground(Color.PINK);
             } else if (reason.contains("trễ") || reason.contains("sớm") || reason.contains("làm thay")
                     || reason.contains("tăng ca") || reason.contains("admin sửa")) {
@@ -447,8 +471,8 @@ public class AttendanceHistoryPanel extends JPanel {
                 c.setBackground(Color.WHITE);
             }
 
-            // Cột doanh thu bold xanh lá
-            if (column == 9 && value != null && !value.toString().equals("—")) {
+            // Cột doanh thu bold xanh lá (trừ dòng vắng)
+            if (column == 9 && value != null && !value.toString().equals("—") && !reason.contains("vắng mặt")) {
                 c.setForeground(new Color(0, 128, 0));
                 c.setFont(c.getFont().deriveFont(Font.BOLD));
             }

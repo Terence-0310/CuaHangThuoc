@@ -25,7 +25,7 @@ import java.util.Map;
  *      b. IF NEW: INSERT SanPham → lấy MaSP
  *      c. IF EXISTS: UPDATE GiaBan, GiaBanSi
  *      d. INSERT LoHang (MaSP, SoLo, HSD, SL, GiaNhap, MaPN)
- *   3. UPDATE PhieuNhap.TongTien = SUM(GiaNhap * SoLuong) từ LoHang
+ *   3. UPDATE PhieuNhap.TongTien = SUM(GiaNhap) từ LoHang (GiaNhap = tổng tiền của cả lô)
  *   COMMIT
  *
  * ⚠️ Tham khảo: SaleServiceImpl.checkout() — cùng pattern Transaction.

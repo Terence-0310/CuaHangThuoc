@@ -72,6 +72,16 @@ public class HrService {
         hrDAO.updateShift(shiftID, start, end);
     }
 
+    public void insertShift(String name, LocalTime start, LocalTime end) {
+        checkAdminPermission();
+        hrDAO.insertShift(name, start, end);
+    }
+
+    public void deleteShift(int shiftID) {
+        checkAdminPermission();
+        hrDAO.deleteShift(shiftID);
+    }
+
     // === SCHEDULE MANAGEMENT ===
     public int copyScheduleLastWeek(LocalDate targetFrom) {
         checkAdminPermission();

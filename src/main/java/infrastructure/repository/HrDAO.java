@@ -200,6 +200,30 @@ public class HrDAO {
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
 
+    /** Thêm ca mới */
+    public void insertShift(String shiftName, LocalTime start, LocalTime end) {
+        String sql = "INSERT INTO HR_Shifts (ShiftName, DefaultStartTime, DefaultEndTime) VALUES (?, ?, ?)";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setNString(1, shiftName);
+            ps.setTime(2, Time.valueOf(start));
+            ps.setTime(3, Time.valueOf(end));
+            ps.executeUpdate();
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    /** Xóa ca (chỉ khi chưa có schedule nào dùng) */
+    public void deleteShift(int shiftID) {
+        String sql = "DELETE FROM HR_Shifts WHERE ShiftID = ? AND NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE ShiftID = ?)";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, shiftID);
+            ps.setInt(2, shiftID);
+            int rows = ps.executeUpdate();
+            if (rows == 0) throw new RuntimeException("Không thể xóa! Ca này đang được sử dụng trong lịch.");
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
     // ==============================================================
     //  MODULE 3: SCHEDULE CRUD
     // ==============================================================
@@ -333,11 +357,19 @@ public class HrDAO {
                      "INSERT INTO HR_Schedules (EmpID, ShiftID, WorkDate, ActualStart, ActualEnd) " +
                      "VALUES (?, ?, ?, ?, ?)";
         int inserted = 0;
+        LocalDate today = LocalDate.now();
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             LocalDate current = fromDate;
             while (!current.isAfter(toDate)) {
+                // ★ Bỏ qua ngày đã qua; nếu hôm nay thì bỏ qua ca đã kết thúc
+                if (current.isBefore(today) ||
+                    (current.isEqual(today) && LocalTime.now().isAfter(actualEnd))) {
+                    current = current.plusDays(1);
+                    continue;
+                }
+
                 // IF NOT EXISTS params (3)
                 ps.setInt(1, empID);
                 ps.setDate(2, Date.valueOf(current));

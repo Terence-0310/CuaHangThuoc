@@ -168,12 +168,12 @@ public class ReportRepositoryImpl implements IReportRepository {
         // 2. Import cost
         String sqlImport = "SELECT ISNULL(SUM(TongTien), 0) AS TotalImport FROM PhieuNhap pn WHERE " + dateFilterPN;
 
-        // 3. Salary cost
+        // 3. Salary cost (from HR_Payroll — only confirmed payments)
         String sqlSalary;
         if (quarter <= 0 || quarter > 4) {
-            sqlSalary = "SELECT ISNULL(SUM(DailyEarned), 0) AS TotalSalary FROM HR_Attendances WHERE YEAR(CreatedAt) = " + year;
+            sqlSalary = "SELECT ISNULL(SUM(TongTien), 0) AS TotalSalary FROM HR_Payroll WHERE TrangThai = N'Đã thanh toán' AND YEAR(NgayThanhToan) = " + year;
         } else {
-            sqlSalary = "SELECT ISNULL(SUM(DailyEarned), 0) AS TotalSalary FROM HR_Attendances WHERE YEAR(CreatedAt) = " + year + " AND DATEPART(QUARTER, CreatedAt) = " + quarter;
+            sqlSalary = "SELECT ISNULL(SUM(TongTien), 0) AS TotalSalary FROM HR_Payroll WHERE TrangThai = N'Đã thanh toán' AND YEAR(NgayThanhToan) = " + year + " AND DATEPART(QUARTER, NgayThanhToan) = " + quarter;
         }
 
         try (Connection conn = DatabaseHelper.getConnection()) {

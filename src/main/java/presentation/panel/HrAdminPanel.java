@@ -46,7 +46,7 @@ public class HrAdminPanel extends JPanel {
     // === TAB 2: Shift Config ===
     private DefaultTableModel shiftModel;
     private JTable shiftTable;
-    private JTextField txtShiftStart, txtShiftEnd;
+    private JTextField txtShiftStart, txtShiftEnd, txtShiftName;
 
     // === TAB 3: Schedule (Xếp Ca) ===
     private JComboBox<String> cboSchedEmp, cboSchedShift;
@@ -154,10 +154,16 @@ public class HrAdminPanel extends JPanel {
         // Tab 4: Lịch Sử Chấm Công
         tabbedPane.addTab("  4. Lịch Sử Ca Làm  ", new AttendanceHistoryPanel());
 
+        // Tab 5: Bảng Lương
+        tabbedPane.addTab("  5. Bảng Lương Tháng  ", new PayrollPanel());
+
         tabbedPane.addChangeListener(e -> {
             if (tabbedPane.getSelectedIndex() == 0) loadEmpData();
             else if (tabbedPane.getSelectedIndex() == 1) loadShiftData();
-            else if (tabbedPane.getSelectedIndex() == 2) loadScheduleData();
+            else if (tabbedPane.getSelectedIndex() == 2) {
+                refreshScheduleCombos();
+                loadScheduleData();
+            }
         });
 
         add(tabbedPane, BorderLayout.CENTER);
@@ -674,36 +680,53 @@ public class HrAdminPanel extends JPanel {
         scrollP.getViewport().setBackground(Color.WHITE);
         tab.add(scrollP, BorderLayout.CENTER);
 
-        // Bottom: Edit fields
-        JPanel editPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 12));
+        // Bottom: Add/Edit form
+        JPanel editPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         editPanel.setBackground(Color.WHITE);
         editPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
 
-        editPanel.add(new JLabel("Giờ bắt đầu (HH:mm):"));
-        txtShiftStart = new JTextField(8);
+        editPanel.add(new JLabel("Tên ca:"));
+        txtShiftName = new JTextField(12);
+        txtShiftName.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        txtShiftName.setPreferredSize(new Dimension(140, 34));
+        editPanel.add(txtShiftName);
+
+        editPanel.add(new JLabel("Giờ BĐ:"));
+        txtShiftStart = new JTextField(5);
         txtShiftStart.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtShiftStart.setPreferredSize(new Dimension(100, 34));
+        txtShiftStart.setPreferredSize(new Dimension(70, 34));
         editPanel.add(txtShiftStart);
 
-        editPanel.add(new JLabel("Giờ kết thúc (HH:mm):"));
-        txtShiftEnd = new JTextField(8);
+        editPanel.add(new JLabel("Giờ KT:"));
+        txtShiftEnd = new JTextField(5);
         txtShiftEnd.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtShiftEnd.setPreferredSize(new Dimension(100, 34));
+        txtShiftEnd.setPreferredSize(new Dimension(70, 34));
         editPanel.add(txtShiftEnd);
 
+        JButton btnAddShift = createActionButton("Thêm Ca", AppColors.SUCCESS);
+        btnAddShift.setPreferredSize(new Dimension(100, 36));
+        btnAddShift.addActionListener(e -> doAddShift());
+        editPanel.add(btnAddShift);
+
         JButton btnSaveShift = createActionButton("Lưu Thay Đổi", AppColors.PRIMARY);
-        btnSaveShift.setPreferredSize(new Dimension(140, 36));
+        btnSaveShift.setPreferredSize(new Dimension(120, 36));
         btnSaveShift.addActionListener(e -> doSaveShift());
         editPanel.add(btnSaveShift);
 
+        JButton btnDelShift = createActionButton("Xóa Ca", AppColors.DANGER);
+        btnDelShift.setPreferredSize(new Dimension(90, 36));
+        btnDelShift.addActionListener(e -> doDeleteShift());
+        editPanel.add(btnDelShift);
+
         tab.add(editPanel, BorderLayout.SOUTH);
 
-        // Click row → fill shift fields (column indices shifted due to Loại column)
+        // Click row → fill fields
         shiftTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int row = shiftTable.getSelectedRow();
                 if (row >= 0) {
+                    txtShiftName.setText(shiftModel.getValueAt(row, 1).toString());
                     txtShiftStart.setText(shiftModel.getValueAt(row, 3).toString());
                     txtShiftEnd.setText(shiftModel.getValueAt(row, 4).toString());
                 }
@@ -748,10 +771,73 @@ public class HrAdminPanel extends JPanel {
             hrService.updateShift(shiftID, start, end);
             JOptionPane.showMessageDialog(this, "Cập nhật giờ ca thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             loadShiftData();
+            refreshScheduleCombos();
         } catch (java.time.format.DateTimeParseException ex) {
             showWarning("Định dạng giờ không hợp lệ! Dùng HH:mm (VD: 06:00)");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void doAddShift() {
+        String name = txtShiftName.getText().trim();
+        if (name.isEmpty()) { showWarning("Vui lòng nhập tên ca!"); return; }
+
+        try {
+            LocalTime start = LocalTime.parse(txtShiftStart.getText().trim());
+            LocalTime end = LocalTime.parse(txtShiftEnd.getText().trim());
+            hrService.insertShift(name, start, end);
+            JOptionPane.showMessageDialog(this, "Thêm ca \"" + name + "\" thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            loadShiftData();
+            refreshScheduleCombos();
+            txtShiftName.setText("");
+            txtShiftStart.setText("");
+            txtShiftEnd.setText("");
+        } catch (java.time.format.DateTimeParseException ex) {
+            showWarning("Định dạng giờ không hợp lệ! Dùng HH:mm (VD: 06:00)");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void doDeleteShift() {
+        int row = shiftTable.getSelectedRow();
+        if (row < 0) { showWarning("Chọn 1 ca để xóa!"); return; }
+
+        int shiftID = (int) shiftModel.getValueAt(row, 0);
+        String shiftName = shiftModel.getValueAt(row, 1).toString();
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Xác nhận xóa ca \"" + shiftName + "\"?\n(Chỉ xóa được nếu chưa có lịch nào sử dụng)",
+            "Xóa Ca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        try {
+            hrService.deleteShift(shiftID);
+            JOptionPane.showMessageDialog(this, "Đã xóa ca \"" + shiftName + "\".", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            loadShiftData();
+            refreshScheduleCombos();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Refresh employee + shift comboboxes in Tab 3 (Schedule) */
+    private void refreshScheduleCombos() {
+        // Refresh employee list
+        activeEmployees = hrService.getAllEmployees().stream()
+                .filter(Employee::isActive)
+                .collect(java.util.stream.Collectors.toList());
+        cboSchedEmp.removeAllItems();
+        for (Employee e : activeEmployees) {
+            cboSchedEmp.addItem(e.getEmpID() + " - " + e.getFullName());
+        }
+
+        // Refresh shift list
+        shiftList = hrService.getAllShifts();
+        cboSchedShift.removeAllItems();
+        for (Shift s : shiftList) {
+            cboSchedShift.addItem(s.getShiftID() + " - " + s.getShiftName());
         }
     }
 
@@ -1085,6 +1171,21 @@ public class HrAdminPanel extends JPanel {
         java.util.Date ev = (java.util.Date) spnActualEnd.getValue();
         LocalTime actualStart = LocalTime.of(sv.getHours(), sv.getMinutes());
         LocalTime actualEnd = LocalTime.of(ev.getHours(), ev.getMinutes());
+
+        // ★ CHẶN: Không cho tạo/sửa lịch cho ngày/giờ đã qua
+        LocalDate today = LocalDate.now();
+        if (from.isBefore(today)) {
+            showWarning("Không thể xếp ca cho ngày đã qua!\n" +
+                    "Ngày bạn chọn: " + from.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\n" +
+                    "Hôm nay: " + today.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+            return;
+        }
+        if (from.isEqual(today) && LocalTime.now().isAfter(actualEnd)) {
+            showWarning("Ca này đã kết thúc hôm nay!\n" +
+                    "Giờ ra: " + actualEnd + " — Bây giờ: " + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
+                    "Vui lòng chọn từ ngày mai trở đi.");
+            return;
+        }
 
         if (currentEditScheduleId > 0) {
             try {

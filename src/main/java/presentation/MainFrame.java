@@ -248,10 +248,10 @@ public class MainFrame extends JFrame {
         if (!Session.isAdmin()) {
             btnDashboard.setVisible(false);
             btnImport.setVisible(false);
-            // Quản Lý: ẩn NCC, Kho, Hóa đơn (NV chỉ coi SP + KH)
+            // Quản Lý: ẩn NCC, Kho, HRM (NV chỉ coi SP + KH + Hóa đơn)
             btnSupplier.setVisible(false);
             btnInventory.setVisible(false);
-            btnInvoice.setVisible(false);
+            btnHrAdmin.setVisible(false);
             // Quản Trị: ẩn toàn bộ
             btnUserMgmt.getParent().setVisible(false);
             for (Component c : sidebar.getComponents()) {

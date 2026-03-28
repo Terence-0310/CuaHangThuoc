@@ -426,28 +426,37 @@ public class InvoicePanel extends JPanel {
         });
         popup.add(menuDetail);
 
-        JMenuItem menuReturn = new JMenuItem("Trả hàng");
-        menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
-        menuReturn.addActionListener(e -> {
-            int r = table.getSelectedRow();
-            if (r >= 0) {
-                int maHD = (int) tableModel.getValueAt(r, 1);
-                Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-                new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
-                loadInvoices();
-            }
-        });
-        popup.add(menuReturn);
-        popup.addSeparator();
+        // Admin-only actions: Trả hàng + Hủy hóa đơn
+        JMenuItem menuReturn = null;
+        JMenuItem menuVoid = null;
+        if (common.Session.isAdmin()) {
+            popup.addSeparator();
 
-        JMenuItem menuVoid = new JMenuItem("Hủy hóa đơn");
-        menuVoid.setForeground(AppColors.DANGER);
-        menuVoid.addActionListener(e -> {
-            int r = table.getSelectedRow();
-            if (r >= 0) doVoidInvoice((int) tableModel.getValueAt(r, 1));
-        });
-        popup.add(menuVoid);
+            menuReturn = new JMenuItem("Trả hàng");
+            menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
+            menuReturn.addActionListener(e -> {
+                int r = table.getSelectedRow();
+                if (r >= 0) {
+                    int maHD = (int) tableModel.getValueAt(r, 1);
+                    Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
+                    new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
+                    loadInvoices();
+                }
+            });
+            popup.add(menuReturn);
+            popup.addSeparator();
 
+            menuVoid = new JMenuItem("Hủy hóa đơn");
+            menuVoid.setForeground(AppColors.DANGER);
+            menuVoid.addActionListener(e -> {
+                int r = table.getSelectedRow();
+                if (r >= 0) doVoidInvoice((int) tableModel.getValueAt(r, 1));
+            });
+            popup.add(menuVoid);
+        }
+
+        final JMenuItem fMenuReturn = menuReturn;
+        final JMenuItem fMenuVoid = menuVoid;
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mousePressed(java.awt.event.MouseEvent e) { tryPopup(e); }
             @Override public void mouseReleased(java.awt.event.MouseEvent e) { tryPopup(e); }
@@ -456,10 +465,12 @@ public class InvoicePanel extends JPanel {
                     int row = table.rowAtPoint(e.getPoint());
                     if (row >= 0) {
                         table.setRowSelectionInterval(row, row);
-                        String status = tableModel.getValueAt(row, 8).toString();
-                        boolean isActive = !status.contains("hủy") && !status.contains("Hủy");
-                        menuVoid.setEnabled(isActive);
-                        menuReturn.setEnabled(isActive);
+                        if (fMenuVoid != null || fMenuReturn != null) {
+                            String status = tableModel.getValueAt(row, 8).toString();
+                            boolean isActive = !status.contains("hủy") && !status.contains("Hủy");
+                            if (fMenuVoid != null) fMenuVoid.setEnabled(isActive);
+                            if (fMenuReturn != null) fMenuReturn.setEnabled(isActive);
+                        }
                         popup.show(table, e.getX(), e.getY());
                     }
                 }

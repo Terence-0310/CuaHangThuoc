@@ -194,6 +194,26 @@ public class AttendanceDAO {
         return null;
     }
 
+    /**
+     * Lấy giờ kết ca theo lịch (SnapshotEnd) cho ca đang mở.
+     * Dùng để kiểm tra NV kết ca sớm.
+     */
+    public java.time.LocalTime getActiveShiftEndTime(int empID) {
+        String sql = "SELECT a.SnapshotEnd FROM HR_Attendances a WHERE a.EmpID = ? AND a.ClockOut IS NULL";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, empID);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                Time t = rs.getTime("SnapshotEnd");
+                return t != null ? t.toLocalTime() : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
     /** Kết ca & Tính lương (POST-AUDIT OVERTIME: KHÔNG CAPPING) */
     public void clockOut(int empID, String overtimeReason) {
         String sqlUpdateClockOut = 
@@ -233,6 +253,42 @@ public class AttendanceDAO {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi kết ca: " + e.getMessage());
+        }
+    }
+
+    // ==========================================
+    // MODULE: TỰ ĐỘNG ĐÁNH DẤU VẮNG MẶT
+    // ==========================================
+
+    /**
+     * ★ Tự động quét các lịch đã qua mà không ai nhận ca.
+     * Tạo bản ghi "VẮNG MẶT" trong HR_Attendances.
+     * Gọi khi mở tab Lịch Sử hoặc khi load Dashboard.
+     *
+     * Điều kiện:
+     *  - WorkDate + ActualEnd < NOW (ca đã kết thúc)
+     *  - Không tồn tại bản ghi HR_Attendances cho ScheduleID đó
+     */
+    public int markAbsentSchedules() {
+        String sql =
+            "INSERT INTO HR_Attendances (EmpID, ScheduleID, ClockIn, ClockOut, TotalHours, DailyEarned, " +
+            "    LateReason, SnapshotRate, SnapshotStart, SnapshotEnd) " +
+            "SELECT s.EmpID, s.ScheduleID, NULL, NULL, 0, 0, " +
+            "    N'VẮNG MẶT - Không nhận ca', e.HourlyRate, s.ActualStart, s.ActualEnd " +
+            "FROM HR_Schedules s " +
+            "JOIN HR_Employees e ON s.EmpID = e.EmpID " +
+            "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
+            "WHERE NOT EXISTS (SELECT 1 FROM HR_Attendances a WHERE a.ScheduleID = s.ScheduleID) " +
+            "  AND DATEADD(MINUTE, " +
+            "      DATEDIFF(MINUTE, 0, s.ActualEnd) + CASE WHEN s.ActualEnd < s.ActualStart THEN 1440 ELSE 0 END, " +
+            "      CAST(s.WorkDate AS DATETIME)) < GETDATE()";
+
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[markAbsentSchedules] Lỗi: " + e.getMessage());
+            return 0;
         }
     }
 
@@ -329,8 +385,8 @@ public class AttendanceDAO {
             "OUTER APPLY ( " +
             "    SELECT COUNT(*) AS InvoiceCount, SUM(hd.TongTien) AS TotalRevenue " +
             "    FROM HoaDon hd " +
-            "    WHERE hd.MaND = e.MaND " +
-            "      AND hd.TrangThai = N'Hoàn thành' " +
+            "    WHERE (e.MaND IS NOT NULL AND hd.MaND = e.MaND OR e.MaND IS NULL) " +
+            "      AND ISNULL(hd.TrangThai, N'Thanh cong') = N'Thanh cong' " +
             "      AND a.ClockOut IS NOT NULL " +
             "      AND hd.NgayBan BETWEEN a.ClockIn AND a.ClockOut " +
             ") inv " +
@@ -374,7 +430,7 @@ public class AttendanceDAO {
         List<java.util.Map<String, Object>> list = new java.util.ArrayList<>();
         String sql =
             "SELECT hd.MaHD, hd.NgayBan, ISNULL(kh.TenKH, N'Khách lẻ') AS KhachHang, " +
-            "hd.TongTien, hd.TrangThai " +
+            "hd.TongTien, ISNULL(hd.TrangThai, N'Thanh cong') AS TrangThai " +
             "FROM HoaDon hd " +
             "LEFT JOIN KhachHang kh ON hd.MaKH = kh.MaKH " +
             "CROSS JOIN ( " +
@@ -383,7 +439,7 @@ public class AttendanceDAO {
             "    JOIN HR_Employees e ON a.EmpID = e.EmpID " +
             "    WHERE a.AttendanceID = ? " +
             ") att " +
-            "WHERE hd.MaND = att.MaND " +
+            "WHERE (att.MaND IS NOT NULL AND hd.MaND = att.MaND OR att.MaND IS NULL) " +
             "  AND hd.NgayBan BETWEEN att.ClockIn AND att.ClockOut " +
             "ORDER BY hd.NgayBan ASC";
 
