@@ -1146,16 +1146,19 @@ public class HrAdminPanel extends JPanel {
             dpFrom.setDate(sc.getWorkDate());
             dpTo.setDate(sc.getWorkDate());
             dpTo.setEnabled(false);
-            java.util.Date sDate = new java.util.Date();
-            sDate.setHours(sc.getActualStart().getHour());
-            sDate.setMinutes(sc.getActualStart().getMinute());
-            sDate.setSeconds(0);
-            spnActualStart.setValue(sDate);
-            java.util.Date eDate = new java.util.Date();
-            eDate.setHours(sc.getActualEnd().getHour());
-            eDate.setMinutes(sc.getActualEnd().getMinute());
-            eDate.setSeconds(0);
-            spnActualEnd.setValue(eDate);
+            if (sc.getActualStart() != null && sc.getActualEnd() != null) {
+                java.util.Date sDate = new java.util.Date();
+                sDate.setHours(sc.getActualStart().getHour());
+                sDate.setMinutes(sc.getActualStart().getMinute());
+                sDate.setSeconds(0);
+                spnActualStart.setValue(sDate);
+                java.util.Date eDate = new java.util.Date();
+                eDate.setHours(sc.getActualEnd().getHour());
+                eDate.setMinutes(sc.getActualEnd().getMinute());
+                eDate.setSeconds(0);
+                spnActualEnd.setValue(eDate);
+            }
+            // autoFillShiftTimes() sẽ tự disable spinner nếu là ca nghỉ
         } else {
             clearSchedForm();
         }
