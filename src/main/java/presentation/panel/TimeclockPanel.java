@@ -145,7 +145,7 @@ public class TimeclockPanel extends JPanel {
                 if (unclocked.isEmpty()) {
                     // Hoàn toàn không có ca nào → BLOCK
                     JOptionPane.showMessageDialog(this,
-                        "❌ " + emp.getFullName() + " không có ca nào được xếp hôm nay!\n" +
+                        emp.getFullName() + " không có ca nào được xếp hôm nay!\n" +
                         "Và cũng không có ca trống nào để làm thay.\n\n" +
                         "Liên hệ Quản lý để được xếp ca.",
                         "KHÔNG CÓ CA", JOptionPane.ERROR_MESSAGE);
@@ -185,7 +185,7 @@ public class TimeclockPanel extends JPanel {
                 if (now.isBefore(allowedFrom)) {
                     long minutesLeft = java.time.Duration.between(now, allowedFrom).toMinutes();
                     JOptionPane.showMessageDialog(this,
-                        "⏰ Chưa đến giờ nhận ca!\n\n" +
+                        "Chưa đến giờ nhận ca!\n\n" +
                         "Ca: " + replacedSched.getShiftName() + " (" + replacedSched.getActualStart() + " - " + replacedSched.getActualEnd() + ")\n" +
                         "Được phép nhận ca từ: " + allowedFrom.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
                         "Còn " + minutesLeft + " phút nữa mới được chấm công.",
@@ -214,12 +214,12 @@ public class TimeclockPanel extends JPanel {
                 if (now.isBefore(allowedFrom)) {
                     long minutesLeft = java.time.Duration.between(now, allowedFrom).toMinutes();
                     JOptionPane.showMessageDialog(this,
-                        "⏰ Chưa đến giờ nhận ca!\n\n" +
+                        "Chưa đến giờ nhận ca!\n\n" +
                         "Xin chào " + emp.getFullName() + "\n" +
                         "Ca của bạn: " + sched.getShiftName() + " (" + sched.getActualStart() + " - " + sched.getActualEnd() + ")\n" +
                         "Được phép nhận ca từ: " + allowedFrom.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
                         "Còn " + minutesLeft + " phút nữa mới được chấm công.\n\n" +
-                        "Cảm ơn bạn đến sớm! ☕",
+                        "Cảm ơn bạn đến sớm!",
                         "CHƯA ĐẾN GIỜ", JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
@@ -239,7 +239,7 @@ public class TimeclockPanel extends JPanel {
             }
 
             attendanceDAO.clockIn(emp.getEmpID(), targetScheduleId, lateReason);
-            JOptionPane.showMessageDialog(this, "✅ Nhận ca thành công!\nXin chào " + emp.getFullName() +
+            JOptionPane.showMessageDialog(this, "Nhận ca thành công!\nXin chào " + emp.getFullName() +
                     "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
@@ -279,7 +279,7 @@ public class TimeclockPanel extends JPanel {
                 long minutesEarly = java.time.Duration.between(now, scheduledEnd).toMinutes();
 
                 int confirm = JOptionPane.showConfirmDialog(this,
-                    "⚠️ CẢNH BÁO: KẾT CA SỚM!\n\n" +
+                    "CẢNH BÁO: KẾT CA SỚM!\n\n" +
                     emp.getFullName() + ", giờ kết ca quy định là " + scheduledEnd.format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
                     "Bạn đang kết ca sớm " + minutesEarly + " phút.\n\n" +
                     "Bạn có chắc muốn kết ca sớm?",
@@ -324,7 +324,7 @@ public class TimeclockPanel extends JPanel {
             }
 
             attendanceDAO.clockOut(emp.getEmpID(), combinedReason.isEmpty() ? overtimeReason : combinedReason);
-            JOptionPane.showMessageDialog(this, "✅ Kết ca thành công!\nTạm biệt " + emp.getFullName() +
+            JOptionPane.showMessageDialog(this, "Kết ca thành công!\nTạm biệt " + emp.getFullName() +
                     "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
 

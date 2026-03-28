@@ -1224,7 +1224,7 @@ public class POSPanel extends JPanel {
         bottomPanel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, AppColors.NEUTRAL_DARK));
 
         // Warning
-        JLabel lblWarn = new JLabel("<html><center>⚠ Vui lòng kiểm tra app ngân hàng xác nhận<br><b>đã nhận đủ tiền</b> trước khi ấn xác nhận!</center></html>");
+        JLabel lblWarn = new JLabel("<html><center>Vui lòng kiểm tra app ngân hàng xác nhận<br><b>đã nhận đủ tiền</b> trước khi ấn xác nhận!</center></html>");
         lblWarn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblWarn.setForeground(AppColors.DANGER);
         lblWarn.setAlignmentX(CENTER_ALIGNMENT);

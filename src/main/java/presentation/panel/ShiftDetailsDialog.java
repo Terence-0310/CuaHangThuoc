@@ -82,7 +82,7 @@ public class ShiftDetailsDialog extends JDialog {
         center.setBackground(Color.WHITE);
         center.setBorder(new EmptyBorder(10, 20, 5, 20));
 
-        JLabel lblTitle = new JLabel("📋 Hóa đơn trong ca làm việc này:");
+        JLabel lblTitle = new JLabel("Hóa đơn trong ca làm việc này:");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblTitle.setBorder(new EmptyBorder(0, 0, 8, 0));
         center.add(lblTitle, BorderLayout.NORTH);
@@ -149,11 +149,11 @@ public class ShiftDetailsDialog extends JDialog {
                 ? String.format("%,.0f", attendance.getTotalRevenue()) : "0";
         int invoiceCount = attendance.getInvoiceCount();
 
-        JLabel lblEarned = new JLabel("💰 Lương Ca: " + earnedStr + " ₫");
+        JLabel lblEarned = new JLabel("Lương Ca: " + earnedStr + " ₫");
         lblEarned.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblEarned.setForeground(AppColors.PRIMARY);
 
-        JLabel lblRevenue = new JLabel("📊 Doanh Thu: " + revenueStr + " ₫ (" + invoiceCount + " hóa đơn)");
+        JLabel lblRevenue = new JLabel("Doanh Thu: " + revenueStr + " ₫ (" + invoiceCount + " hóa đơn)");
         lblRevenue.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblRevenue.setForeground(new Color(0, 128, 0));
 

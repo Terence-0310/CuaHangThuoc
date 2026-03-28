@@ -149,14 +149,14 @@ public class AttendanceHistoryPanel extends JPanel {
 
                     JPopupMenu popup = new JPopupMenu();
 
-                    JMenuItem mnuDetails = new JMenuItem("📋 Xem chi tiết ca làm việc");
+                    JMenuItem mnuDetails = new JMenuItem("Xem chi tiết ca làm việc");
                     mnuDetails.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                     mnuDetails.addActionListener(evt -> doShowShiftDetails(r));
                     popup.add(mnuDetails);
 
                     popup.addSeparator();
 
-                    JMenuItem mnuEdit = new JMenuItem("✏️ Sửa giờ thủ công (Admin)");
+                    JMenuItem mnuEdit = new JMenuItem("Sửa giờ thủ công (Admin)");
                     mnuEdit.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                     mnuEdit.addActionListener(evt -> doManualEdit(r));
                     popup.add(mnuEdit);
@@ -248,8 +248,8 @@ public class AttendanceHistoryPanel extends JPanel {
             String inTime, outTime, totalHourStr, earnedStr;
 
             if (isAbsent) {
-                inTime = "❌ VẮNG";
-                outTime = "❌ VẮNG";
+                inTime = "VẮNG";
+                outTime = "VẮNG";
                 totalHourStr = "0g 0p";
                 earnedStr = "0";
             } else {

@@ -720,7 +720,7 @@ public class InventoryPanel extends JPanel {
 
             // Summary
             lblSummary.setText(String.format(
-                    "  Trang %d/%d   |   Tổng: %,d lô   |   ⚠ Hết HSD: %d   |   ⚠ Cận Date: %d   |   ❌ Hết hàng: %d",
+                    "  Trang %d/%d   |   Tổng: %,d lô   |   Hết HSD: %d   |   Cận Date: %d   |   Hết hàng: %d",
                     currentPage, totalPages, total, countHetHSD, countCanDate, countHetHang));
 
         } catch (SQLException e) {
@@ -1094,7 +1094,7 @@ public class InventoryPanel extends JPanel {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(new Color(0x1B, 0x3A, 0x5C));
         header.setBorder(new EmptyBorder(12, 20, 12, 20));
-        JLabel lblH = new JLabel("📋  Lịch sử xử lý lô " + soLo);
+        JLabel lblH = new JLabel("Lịch sử xử lý lô " + soLo);
         lblH.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblH.setForeground(Color.WHITE);
         header.add(lblH, BorderLayout.WEST);
