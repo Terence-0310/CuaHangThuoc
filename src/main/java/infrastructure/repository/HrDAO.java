@@ -502,8 +502,10 @@ public class HrDAO {
                 sc.setShiftID(rs.getInt("ShiftID"));
                 sc.setShiftName(rs.getNString("ShiftName"));
                 sc.setWorkDate(rs.getDate("WorkDate").toLocalDate());
-                sc.setActualStart(rs.getTime("ActualStart").toLocalTime());
-                sc.setActualEnd(rs.getTime("ActualEnd").toLocalTime());
+                java.sql.Time tStart = rs.getTime("ActualStart");
+                java.sql.Time tEnd = rs.getTime("ActualEnd");
+                sc.setActualStart(tStart != null ? tStart.toLocalTime() : null);
+                sc.setActualEnd(tEnd != null ? tEnd.toLocalTime() : null);
                 Timestamp ts = rs.getTimestamp("CreatedAt");
                 if (ts != null) sc.setCreatedAt(ts.toLocalDateTime());
                 list.add(sc);

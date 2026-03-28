@@ -1389,7 +1389,8 @@ public class HrAdminPanel extends JPanel {
             schedModel.addRow(new Object[]{
                 false, sc.getScheduleID(), sc.getEmpName(),
                 sc.getWorkDate().format(dateFmt), sc.getShiftName(),
-                sc.getActualStart().toString(), sc.getActualEnd().toString()
+                sc.getActualStart() != null ? sc.getActualStart().toString() : "—",
+                sc.getActualEnd() != null ? sc.getActualEnd().toString() : "—"
             });
         }
     }
