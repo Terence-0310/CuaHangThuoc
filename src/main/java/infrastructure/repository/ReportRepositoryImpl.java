@@ -155,27 +155,57 @@ public class ReportRepositoryImpl implements IReportRepository {
 
     @Override
     public BusinessMetricDTO getKPIs(int year, int quarter) {
-        String dateFilter = buildDateFilter(year, quarter);
-        // RETURN invoices already have negative TongTien → SUM gives net revenue directly
-        String sql = "SELECT " +
+        String dateFilterHD = buildDateFilter(year, quarter);
+        String dateFilterPN = buildDateFilterImport(year, quarter);
+
+        // 1. Revenue + Invoice count + Product count
+        String sqlRevenue = "SELECT " +
                      "ISNULL(SUM(TongTien), 0) AS NetRevenue, " +
                      "COUNT(CASE WHEN ISNULL(LoaiHD, 'SALE') = 'SALE' THEN 1 END) AS TotalSaleInvoices, " +
                      "(SELECT COUNT(*) FROM SanPham WHERE TrangThai = 1) AS TotalProducts " +
-                     "FROM HoaDon hd WHERE ISNULL(TrangThai, N'Thanh cong') = N'Thanh cong' AND " + dateFilter;
-        try (Connection conn = DatabaseHelper.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) {
-                return new BusinessMetricDTO(
-                        rs.getBigDecimal("NetRevenue"),
-                        rs.getInt("TotalSaleInvoices"),
-                        rs.getInt("TotalProducts")
-                );
+                     "FROM HoaDon hd WHERE ISNULL(TrangThai, N'Thanh cong') = N'Thanh cong' AND " + dateFilterHD;
+
+        // 2. Import cost
+        String sqlImport = "SELECT ISNULL(SUM(TongTien), 0) AS TotalImport FROM PhieuNhap pn WHERE " + dateFilterPN;
+
+        // 3. Salary cost
+        String sqlSalary;
+        if (quarter <= 0 || quarter > 4) {
+            sqlSalary = "SELECT ISNULL(SUM(DailyEarned), 0) AS TotalSalary FROM HR_Attendances WHERE YEAR(CreatedAt) = " + year;
+        } else {
+            sqlSalary = "SELECT ISNULL(SUM(DailyEarned), 0) AS TotalSalary FROM HR_Attendances WHERE YEAR(CreatedAt) = " + year + " AND DATEPART(QUARTER, CreatedAt) = " + quarter;
+        }
+
+        try (Connection conn = DatabaseHelper.getConnection()) {
+            BigDecimal netRevenue = BigDecimal.ZERO;
+            int totalInvoices = 0, totalProducts = 0;
+            BigDecimal totalImport = BigDecimal.ZERO;
+            BigDecimal totalSalary = BigDecimal.ZERO;
+
+            try (PreparedStatement ps = conn.prepareStatement(sqlRevenue);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    netRevenue = rs.getBigDecimal("NetRevenue");
+                    totalInvoices = rs.getInt("TotalSaleInvoices");
+                    totalProducts = rs.getInt("TotalProducts");
+                }
             }
+            try (PreparedStatement ps = conn.prepareStatement(sqlImport);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) totalImport = rs.getBigDecimal("TotalImport");
+            }
+            try (PreparedStatement ps = conn.prepareStatement(sqlSalary);
+                 ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) totalSalary = rs.getBigDecimal("TotalSalary");
+            }
+
+            BigDecimal totalExpenses = totalImport.add(totalSalary);
+            BigDecimal netProfit = netRevenue.subtract(totalExpenses);
+
+            return new BusinessMetricDTO(netRevenue, totalInvoices, totalProducts, totalExpenses, netProfit);
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi truy vấn KPI", e);
         }
-        return new BusinessMetricDTO(BigDecimal.ZERO, 0, 0);
     }
 
     @Override

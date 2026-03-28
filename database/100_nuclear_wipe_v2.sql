@@ -1,0 +1,67 @@
+-- ==================================================================
+-- NUCLEAR WIPE: XÓA SẠCH Toàn Bộ DB - CHỈ GIỮ TÀI KHOẢN ADMIN
+-- ==================================================================
+USE QuanLyCuaHangThuoc;
+GO
+
+BEGIN TRAN;
+
+-- 1. DISABLE FOREIGN KEYS
+EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
+
+-- 2. WIPE OUT EVERY TABLE (Ngoại trừ NguoiDung và HR_Employees)
+DELETE FROM ChiTietHoaDon;
+DELETE FROM ChiTietHuyHang;
+DELETE FROM ChiTietKiemKho;
+DELETE FROM ChiTietTraHang;
+DELETE FROM HoaDon;
+DELETE FROM HR_Attendances;
+DELETE FROM HR_Config;
+DELETE FROM HR_Schedules;
+DELETE FROM HR_Shifts;
+DELETE FROM HuyHang;
+DELETE FROM KhachHang;
+DELETE FROM LoHang;
+DELETE FROM NhaCungCap;
+DELETE FROM PhieuHuyHang;
+DELETE FROM PhieuKiemKho;
+DELETE FROM PhieuNhap;
+DELETE FROM PhieuTraHang;
+DELETE FROM SanPham;
+DELETE FROM SystemLogs;
+DELETE FROM TraHangKhach;
+DELETE FROM TraHangNCC;
+
+-- 3. PRESERVE ADMIN ONLY
+DELETE FROM NguoiDung WHERE TenDangNhap != 'admin';
+DELETE FROM HR_Employees WHERE MaND NOT IN (SELECT MaND FROM NguoiDung WHERE TenDangNhap = 'admin') OR MaND IS NULL;
+
+-- 4. RESET IDENTITY (RESEED) CHO CÁC BẢNG ĐÃ XÓA TRẮNG
+DBCC CHECKIDENT ('ChiTietHoaDon', RESEED, 0);
+DBCC CHECKIDENT ('ChiTietHuyHang', RESEED, 0);
+DBCC CHECKIDENT ('ChiTietKiemKho', RESEED, 0);
+DBCC CHECKIDENT ('ChiTietTraHang', RESEED, 0);
+DBCC CHECKIDENT ('HoaDon', RESEED, 0);
+DBCC CHECKIDENT ('HR_Attendances', RESEED, 0);
+DBCC CHECKIDENT ('HR_Config', RESEED, 0);
+DBCC CHECKIDENT ('HR_Schedules', RESEED, 0);
+DBCC CHECKIDENT ('HR_Shifts', RESEED, 0);
+DBCC CHECKIDENT ('HuyHang', RESEED, 0);
+DBCC CHECKIDENT ('KhachHang', RESEED, 0);
+DBCC CHECKIDENT ('LoHang', RESEED, 0);
+DBCC CHECKIDENT ('NhaCungCap', RESEED, 0);
+DBCC CHECKIDENT ('PhieuHuyHang', RESEED, 0);
+DBCC CHECKIDENT ('PhieuKiemKho', RESEED, 0);
+DBCC CHECKIDENT ('PhieuNhap', RESEED, 0);
+DBCC CHECKIDENT ('PhieuTraHang', RESEED, 0);
+DBCC CHECKIDENT ('SanPham', RESEED, 0);
+DBCC CHECKIDENT ('SystemLogs', RESEED, 0);
+DBCC CHECKIDENT ('TraHangKhach', RESEED, 0);
+DBCC CHECKIDENT ('TraHangNCC', RESEED, 0);
+
+-- 5. RE-ENABLE FOREIGN KEYS
+EXEC sp_MSforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT ALL';
+
+COMMIT TRAN;
+PRINT N'=== NUCLEAR WIPE HOÀN TẤT. CHỈ GIỮ LẠI ADMIN. ===';
+GO

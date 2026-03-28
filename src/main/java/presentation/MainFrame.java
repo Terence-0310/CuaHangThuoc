@@ -22,6 +22,7 @@ public class MainFrame extends JFrame {
 
     // Top-level buttons (always visible)
     private JButton btnDashboard;
+    private JButton btnCheckIn;
     private JButton btnPOS;
     private JButton btnImport;
 
@@ -34,6 +35,7 @@ public class MainFrame extends JFrame {
 
     // Quản Trị sub-buttons
     private JButton btnUserMgmt;
+    private JButton btnHrAdmin;
 
     private JButton btnLogout;
 
@@ -43,6 +45,19 @@ public class MainFrame extends JFrame {
     public MainFrame() {
         initComponents();
         applyPermissions();
+        
+        // === Auto No-Show Detection (chạy nền) ===
+        new Thread(() -> {
+            try {
+                infrastructure.repository.AttendanceDAO dao = new infrastructure.repository.AttendanceDAO();
+                int noShowCount = dao.autoMarkNoShow();
+                if (noShowCount > 0) {
+                    System.out.println("[Startup] Auto-marked " + noShowCount + " no-show records.");
+                }
+            } catch (Exception ex) {
+                System.err.println("[Startup] Auto no-show error: " + ex.getMessage());
+            }
+        }, "AutoNoShow-Thread").start();
     }
 
     private void initComponents() {
@@ -99,10 +114,12 @@ public class MainFrame extends JFrame {
         //  TOP-LEVEL: Dashboard, Bán Hàng, Nhập Kho
         // ============================================================
         btnDashboard = createSidebarButton("Dashboard");
+        btnCheckIn   = createSidebarButton("Chấm Công (V3)");
         btnPOS       = createSidebarButton("Bán Hàng");
         btnImport    = createSidebarButton("Nhập Kho");
 
         sidebar.add(btnDashboard);
+        sidebar.add(btnCheckIn);
         sidebar.add(btnPOS);
         sidebar.add(btnImport);
 
@@ -117,6 +134,7 @@ public class MainFrame extends JFrame {
         btnInventory = createSubButton("Quản Lý Kho");
         btnSupplier  = createSubButton("Nhà Cung Cấp");
         btnCustomer  = createSubButton("Khách Hàng");
+        btnHrAdmin   = createSubButton("Nhân Sự (HRM)");
         btnInvoice   = createSubButton("Hóa Đơn");
 
         JPanel quanLyContainer = new JPanel();
@@ -128,6 +146,7 @@ public class MainFrame extends JFrame {
         quanLyContainer.add(btnInventory);
         quanLyContainer.add(btnSupplier);
         quanLyContainer.add(btnCustomer);
+        quanLyContainer.add(btnHrAdmin);
         quanLyContainer.add(btnInvoice);
 
         JButton btnQuanLyToggle = createSectionToggle("QUẢN LÝ", quanLyContainer);
@@ -190,6 +209,7 @@ public class MainFrame extends JFrame {
         contentPanel.setBackground(AppColors.NEUTRAL);
 
         contentPanel.add(new presentation.panel.ReportPanel(), "dashboard");
+        contentPanel.add(new presentation.panel.TimeclockPanel(), "timeclock");
         contentPanel.add(new presentation.panel.POSPanel(), "pos");
         contentPanel.add(new ProductPanel(), "product");
         contentPanel.add(new presentation.panel.ImportPanel(), "import");
@@ -198,11 +218,13 @@ public class MainFrame extends JFrame {
         contentPanel.add(new presentation.panel.CustomerPanel(), "customer");
         contentPanel.add(new presentation.panel.InvoicePanel(), "invoice");
         contentPanel.add(new presentation.panel.UserManagementPanel(), "usermgmt");
+        contentPanel.add(new presentation.panel.HrAdminPanel(), "hradmin");
 
         add(contentPanel, BorderLayout.CENTER);
 
         // === EVENTS ===
         btnDashboard.addActionListener(e -> switchPanel("dashboard", btnDashboard));
+        btnCheckIn.addActionListener(e -> switchPanel("timeclock", btnCheckIn));
         btnPOS.addActionListener(e -> switchPanel("pos", btnPOS));
         btnImport.addActionListener(e -> switchPanel("import", btnImport));
         btnProduct.addActionListener(e -> switchPanel("product", btnProduct));
@@ -211,13 +233,14 @@ public class MainFrame extends JFrame {
         btnCustomer.addActionListener(e -> switchPanel("customer", btnCustomer));
         btnInvoice.addActionListener(e -> switchPanel("invoice", btnInvoice));
         btnUserMgmt.addActionListener(e -> switchPanel("usermgmt", btnUserMgmt));
+        btnHrAdmin.addActionListener(e -> switchPanel("hradmin", btnHrAdmin));
         btnLogout.addActionListener(e -> doLogout());
 
         // Default view
         if (Session.isAdmin()) {
             switchPanel("dashboard", btnDashboard);
         } else {
-            switchPanel("pos", btnPOS);
+            switchPanel("pos", btnPOS); // Default as POS since check-in is popup
         }
     }
 

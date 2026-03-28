@@ -161,9 +161,28 @@ public class DatePickerField extends JPanel {
         cboMonth.setPreferredSize(new Dimension(100, 24));
         cboMonth.setFocusable(false);
         cboMonth.addActionListener(e -> {
-            int newMonth = cboMonth.getSelectedIndex() + 1;
-            viewMonth[0] = viewMonth[0].withMonth(newMonth);
-            buildCalendar(calPanel, viewMonth, popup);
+            try {
+                // Bước 1: Lấy chuỗi từ ComboBox (VD: "Tháng 05")
+                String selectedStr = (String) cboMonth.getSelectedItem();
+                if (selectedStr != null) {
+                    // Bước 2: Tách bỏ chữ "Tháng " để lấy số
+                    String monthNumStr = selectedStr.replace("Tháng ", "").trim();
+                    
+                    // Bước 3: Parse sang Integer an toàn
+                    int newMonth = Integer.parseInt(monthNumStr);
+                    
+                    // Bước 4: Cập nhật biến lưu trữ ngày tháng
+                    viewMonth[0] = viewMonth[0].withMonth(newMonth);
+                    
+                    // Bước 5: Cập nhật (revalidate/repaint) lại giao diện hiển thị lịch
+                    buildCalendar(calPanel, viewMonth, popup);
+                }
+            } catch (NumberFormatException ex) {
+                // Log lỗi để tránh silent exception
+                System.err.println("Lỗi ép kiểu số tháng: " + ex.getMessage());
+            } catch (Exception ex) {
+                System.err.println("Lỗi không xác định khi chọn tháng: " + ex.getMessage());
+            }
         });
 
         // Year spinner (2000 - 2100)

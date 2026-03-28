@@ -30,13 +30,15 @@ public class InvoicePanel extends JPanel {
 
     private JTabbedPane tabbedPane;
 
-    // --- TAB 1: KHÁCH ĐĂNG KÝ ---
+    // --- TAB 1: TẤT CẢ HÓA ĐƠN BÁN ---
     private DatePickerField dpFromDate1, dpToDate1;
     private JTextField txtSearchKH1, txtSearchMaHD1;
     private JComboBox<String> cboTrangThai1;
+    private JComboBox<String> cboLoaiKhach1;
 
     // --- TAB 2: KHÁCH VÃNG LAI ---
     private DatePickerField dpNgayMua2;
+    private JCheckBox chkLocThoiGian2;
     private JSpinner spinTuGio2, spinDenGio2;
     private JTextField txtSearchSP2;
     private JComboBox<String> cboTrangThai2;
@@ -79,7 +81,7 @@ public class InvoicePanel extends JPanel {
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
         tabbedPane.setBackground(Color.WHITE);
 
-        tabbedPane.addTab("Khách Đăng Ký (SALE)", createTab1Panel());
+        tabbedPane.addTab("Tất Cả Hóa Đơn Bán", createTab1Panel());
         tabbedPane.addTab("Khách Vãng Lai (SALE)", createTab2Panel());
         tabbedPane.addTab("Lịch Sử Trả Hàng (RETURN)", createTab3Panel());
 
@@ -123,6 +125,11 @@ public class InvoicePanel extends JPanel {
         txtSearchKH1 = makeFilterField(12);
         pnl.add(txtSearchKH1);
 
+        pnl.add(makeFilterLabel("Loại KH:"));
+        cboLoaiKhach1 = new JComboBox<>(new String[]{"Tất cả", "Khách đăng ký", "Khách vãng lai"});
+        cboLoaiKhach1.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        pnl.add(cboLoaiKhach1);
+
         pnl.add(makeFilterLabel("Mã HĐ:"));
         txtSearchMaHD1 = makeFilterField(6);
         pnl.add(txtSearchMaHD1);
@@ -147,16 +154,37 @@ public class InvoicePanel extends JPanel {
         dpNgayMua2.setPreferredSize(new Dimension(130, 28));
         pnl.add(dpNgayMua2);
 
+        chkLocThoiGian2 = new JCheckBox("Theo thời gian");
+        chkLocThoiGian2.setBackground(Color.WHITE);
+        chkLocThoiGian2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        chkLocThoiGian2.setSelected(false); 
+        chkLocThoiGian2.setFocusPainted(false);
+        chkLocThoiGian2.addActionListener(e -> {
+            boolean isChecked = chkLocThoiGian2.isSelected();
+            spinTuGio2.setEnabled(isChecked);
+            spinDenGio2.setEnabled(isChecked);
+            // loadInvoices(); // Optional: tự refresh ngay khi click checkbox
+        });
+        pnl.add(chkLocThoiGian2);
+
         pnl.add(makeFilterLabel("Từ giờ:"));
-        spinTuGio2 = new JSpinner(new SpinnerDateModel());
+        java.util.Calendar calStart = java.util.Calendar.getInstance();
+        calStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        calStart.set(java.util.Calendar.MINUTE, 0);
+        spinTuGio2 = new JSpinner(new SpinnerDateModel(calStart.getTime(), null, null, java.util.Calendar.MINUTE));
         JSpinner.DateEditor timeEditor1 = new JSpinner.DateEditor(spinTuGio2, "HH:mm");
         spinTuGio2.setEditor(timeEditor1);
+        spinTuGio2.setEnabled(false); // Tắt mặc định
         pnl.add(spinTuGio2);
 
         pnl.add(makeFilterLabel("Đến giờ:"));
-        spinDenGio2 = new JSpinner(new SpinnerDateModel());
+        java.util.Calendar calEnd = java.util.Calendar.getInstance();
+        calEnd.set(java.util.Calendar.HOUR_OF_DAY, 23);
+        calEnd.set(java.util.Calendar.MINUTE, 59);
+        spinDenGio2 = new JSpinner(new SpinnerDateModel(calEnd.getTime(), null, null, java.util.Calendar.MINUTE));
         JSpinner.DateEditor timeEditor2 = new JSpinner.DateEditor(spinDenGio2, "HH:mm");
         spinDenGio2.setEditor(timeEditor2);
+        spinDenGio2.setEnabled(false); // Tắt mặc định
         pnl.add(spinDenGio2);
 
         pnl.add(makeFilterLabel("Tên/Mã SP:"));
@@ -229,7 +257,7 @@ public class InvoicePanel extends JPanel {
         InvoiceFilterCriteria c = new InvoiceFilterCriteria();
         int tab = tabbedPane.getSelectedIndex();
         if (tab == 0) {
-            c.setCustomerTypeFilter(1); // Đăng ký
+            c.setCustomerTypeFilter(cboLoaiKhach1.getSelectedIndex()); // 0=Tất cả, 1=ĐK, 2=Vãng lai
             c.setInvoiceTypeFilter(1); // SALE
             c.setFromDate(dpFromDate1.getDate());
             c.setToDate(dpToDate1.getDate());
@@ -243,8 +271,10 @@ public class InvoicePanel extends JPanel {
                 c.setFromDate(dpNgayMua2.getDate());
                 c.setToDate(dpNgayMua2.getDate());
             }
-            c.setFromTime(new java.text.SimpleDateFormat("HH:mm").format(spinTuGio2.getValue()));
-            c.setToTime(new java.text.SimpleDateFormat("HH:mm").format(spinDenGio2.getValue()));
+            if (chkLocThoiGian2.isSelected()) {
+                c.setFromTime(new java.text.SimpleDateFormat("HH:mm").format(spinTuGio2.getValue()));
+                c.setToTime(new java.text.SimpleDateFormat("HH:mm").format(spinDenGio2.getValue()));
+            }
             c.setSearchSP(txtSearchSP2.getText());
             c.setStatusFilter(cboTrangThai2.getSelectedIndex());
         } else if (tab == 2) {

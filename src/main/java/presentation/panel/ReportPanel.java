@@ -45,7 +45,7 @@ public class ReportPanel extends JPanel {
     private boolean suppressComboEvent = false;
 
     // KPI Labels
-    private JLabel lblNetRevenue, lblTotalInvoices, lblTotalProducts;
+    private JLabel lblNetRevenue, lblTotalInvoices, lblTotalProducts, lblTotalExpenses, lblNetProfit;
 
     // Table models
     private DefaultTableModel modelTopProducts;
@@ -175,7 +175,7 @@ public class ReportPanel extends JPanel {
     // ================================================================
 
     private JPanel createKPICardsPanel() {
-        JPanel panel = new JPanel(new GridLayout(1, 3, 12, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 5, 12, 0));
         panel.setOpaque(false);
         panel.setBorder(new EmptyBorder(0, 24, 10, 24));
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 90));
@@ -192,6 +192,14 @@ public class ReportPanel extends JPanel {
         lblTotalProducts = new JLabel("0");
         panel.add(createKPICard("Tổng SP Kinh Doanh", lblTotalProducts,
                 new Color(0x17, 0xA2, 0xB8), new Color(0xD1, 0xEC, 0xF1)));
+
+        lblTotalExpenses = new JLabel("0 VND");
+        panel.add(createKPICard("Tổng Chi Phí", lblTotalExpenses,
+                new Color(0xE7, 0x4C, 0x3C), new Color(0xFA, 0xE2, 0xE0)));
+
+        lblNetProfit = new JLabel("0 VND");
+        panel.add(createKPICard("Lợi Nhuận Ròng", lblNetProfit,
+                new Color(0x8E, 0x44, 0xAD), new Color(0xEB, 0xDE, 0xF0)));
 
         return panel;
     }
@@ -426,9 +434,21 @@ public class ReportPanel extends JPanel {
 
     private void updateKPICards(BusinessMetricDTO kpis) {
         BigDecimal rev = kpis.getNetRevenue() != null ? kpis.getNetRevenue() : BigDecimal.ZERO;
+        BigDecimal exp = kpis.getTotalExpenses() != null ? kpis.getTotalExpenses() : BigDecimal.ZERO;
+        BigDecimal profit = kpis.getNetProfit() != null ? kpis.getNetProfit() : BigDecimal.ZERO;
+
         lblNetRevenue.setText(MONEY_FMT.format(rev) + " VNĐ");
         lblTotalInvoices.setText(String.format("%,d hóa đơn", kpis.getTotalSaleInvoices()));
         lblTotalProducts.setText(String.format("%,d sản phẩm", kpis.getTotalProducts()));
+        lblTotalExpenses.setText(MONEY_FMT.format(exp) + " VNĐ");
+
+        // Lợi nhuận: xanh nếu dương, đỏ nếu âm
+        lblNetProfit.setText(MONEY_FMT.format(profit) + " VNĐ");
+        if (profit.compareTo(BigDecimal.ZERO) >= 0) {
+            lblNetProfit.setForeground(new Color(0x27, 0xAE, 0x60)); // Xanh lá = Lãi
+        } else {
+            lblNetProfit.setForeground(AppColors.DANGER); // Đỏ = Lỗ
+        }
     }
 
     private void updateTopProducts(List<TopSellingDTO> list) {
@@ -591,11 +611,19 @@ public class ReportPanel extends JPanel {
 
         // === KPI ===
         BigDecimal rev = currentKPIs.getNetRevenue() != null ? currentKPIs.getNetRevenue() : BigDecimal.ZERO;
-        com.lowagie.text.pdf.PdfPTable kpiTable = new com.lowagie.text.pdf.PdfPTable(3);
+        BigDecimal exp = currentKPIs.getTotalExpenses() != null ? currentKPIs.getTotalExpenses() : BigDecimal.ZERO;
+        BigDecimal profit = currentKPIs.getNetProfit() != null ? currentKPIs.getNetProfit() : BigDecimal.ZERO;
+
+        com.lowagie.text.pdf.PdfPTable kpiTable = new com.lowagie.text.pdf.PdfPTable(5);
         kpiTable.setWidthPercentage(100);
         addKPICell(kpiTable, "Tổng Doanh Thu Thuần", MONEY_FMT.format(rev) + " VNĐ", fBold, fKPI);
         addKPICell(kpiTable, "Tổng Số Hóa Đơn", String.format("%,d", currentKPIs.getTotalSaleInvoices()), fBold, fKPI);
         addKPICell(kpiTable, "Tổng SP Kinh Doanh", String.format("%,d", currentKPIs.getTotalProducts()), fBold, fKPI);
+        addKPICell(kpiTable, "Tổng Chi Phí", MONEY_FMT.format(exp) + " VNĐ", fBold,
+                new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 12, com.lowagie.text.Font.BOLD, new Color(0xE7, 0x4C, 0x3C)));
+        addKPICell(kpiTable, "Lợi Nhuận Ròng", MONEY_FMT.format(profit) + " VNĐ", fBold,
+                new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 12, com.lowagie.text.Font.BOLD,
+                        profit.compareTo(BigDecimal.ZERO) >= 0 ? new Color(0x27, 0xAE, 0x60) : new Color(0xE7, 0x4C, 0x3C)));
         doc.add(kpiTable);
         doc.add(new com.lowagie.text.Paragraph(" "));
 
