@@ -426,7 +426,8 @@ public class HrDAO {
      */
     public int insertBulkSchedules(int empID, int shiftID, LocalDate fromDate, LocalDate toDate,
                                     LocalTime actualStart, LocalTime actualEnd) {
-         String sql = "IF NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE EmpID = ? AND WorkDate = ? AND ShiftID = ?) " +
+        // ★ Chặn trùng: 1 NV chỉ có 1 lịch/ngày (không cho vừa làm vừa nghỉ cùng ngày)
+         String sql = "IF NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE EmpID = ? AND WorkDate = ?) " +
                      "INSERT INTO HR_Schedules (EmpID, ShiftID, WorkDate, ActualStart, ActualEnd) " +
                      "VALUES (?, ?, ?, ?, ?)";
         int inserted = 0;
@@ -444,20 +445,19 @@ public class HrDAO {
                     continue;
                 }
 
-                // IF NOT EXISTS params (3)
+                // IF NOT EXISTS params (2)
                 ps.setInt(1, empID);
                 ps.setDate(2, Date.valueOf(current));
-                ps.setInt(3, shiftID);
                 // INSERT params (5)
-                ps.setInt(4, empID);
-                ps.setInt(5, shiftID);
-                ps.setDate(6, Date.valueOf(current));
+                ps.setInt(3, empID);
+                ps.setInt(4, shiftID);
+                ps.setDate(5, Date.valueOf(current));
                 if (isLeave) {
+                    ps.setNull(6, java.sql.Types.TIME);
                     ps.setNull(7, java.sql.Types.TIME);
-                    ps.setNull(8, java.sql.Types.TIME);
                 } else {
-                    ps.setTime(7, Time.valueOf(actualStart));
-                    ps.setTime(8, Time.valueOf(actualEnd));
+                    ps.setTime(6, Time.valueOf(actualStart));
+                    ps.setTime(7, Time.valueOf(actualEnd));
                 }
                 ps.addBatch();
 
