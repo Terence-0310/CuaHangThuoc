@@ -115,7 +115,7 @@ public class DocumentPrinter {
             // Company name
             g.setFont(new Font("Segoe UI", Font.BOLD, 12));
             g.setColor(new Color(0x1B, 0x3A, 0x5C));
-            g.drawString("APOTHECARY PRO", 0, y += 16);
+            g.drawString("MERPHAR", 0, y += 16);
             g.setFont(fontSubtitle);
             g.setColor(Color.GRAY);
             g.drawString("Hệ thống Quản lý Nhà thuốc", 0, y += 14);

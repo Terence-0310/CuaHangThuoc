@@ -313,18 +313,20 @@ public class ReportPanel extends JPanel {
         return wrapTable("Top 10 Nhà Cung Cấp Nhập Nhiều", table, new Color(0x17, 0xA2, 0xB8));
     }
 
-    // --- Table 4: Cảnh báo tồn kho ---
+    // --- Table 4: Cảnh báo tồn kho --- ★ Batch-level alerts
+    private JTable tblStockAlerts; // reference for popup
     private JPanel createStockAlertsTable() {
-        String[] cols = {"#", "Tên SP", "Tổng Tồn", "Số Lô", "Trạng Thái"};
+        String[] cols = {"#", "Tên SP", "Tổng Tồn", "Số Lô", "Hạn SD", "Trạng Thái"};
         modelStockAlerts = createModel(cols);
-        JTable table = createStyledTable(modelStockAlerts);
-        table.getColumnModel().getColumn(0).setMaxWidth(35);
-        table.getColumnModel().getColumn(2).setPreferredWidth(65);
-        table.getColumnModel().getColumn(3).setPreferredWidth(55);
-        table.getColumnModel().getColumn(4).setPreferredWidth(90);
+        tblStockAlerts = createStyledTable(modelStockAlerts);
+        tblStockAlerts.getColumnModel().getColumn(0).setMaxWidth(35);
+        tblStockAlerts.getColumnModel().getColumn(2).setPreferredWidth(55);
+        tblStockAlerts.getColumnModel().getColumn(3).setPreferredWidth(70);
+        tblStockAlerts.getColumnModel().getColumn(4).setPreferredWidth(80);
+        tblStockAlerts.getColumnModel().getColumn(5).setPreferredWidth(90);
 
         // Color the "Trang Thai" column
-        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+        tblStockAlerts.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
             { setHorizontalAlignment(SwingConstants.CENTER); }
             @Override
             public Component getTableCellRendererComponent(JTable t, Object val,
@@ -332,13 +334,17 @@ public class ReportPanel extends JPanel {
                 Component c = super.getTableCellRendererComponent(t, val, sel, foc, row, col);
                 if (!sel && val != null) {
                     String s = val.toString();
-                    if (s.contains("Hết") || s.contains("hết")) {
-                        c.setForeground(AppColors.DANGER);
-                        c.setBackground(new Color(0xF8, 0xD7, 0xDA));
+                    if (s.contains("Hết hàng") || s.contains("hết hạn")) {
+                        c.setForeground(Color.WHITE);
+                        c.setBackground(AppColors.DANGER);
                         setFont(getFont().deriveFont(Font.BOLD));
-                    } else if (s.contains("Sắp") || s.contains("sắp")) {
+                    } else if (s.contains("Sắp")) {
                         c.setForeground(new Color(0x85, 0x6D, 0x04));
                         c.setBackground(new Color(0xFF, 0xF3, 0xCD));
+                        setFont(getFont().deriveFont(Font.BOLD));
+                    } else if (s.contains("Cận")) {
+                        c.setForeground(new Color(0xFF, 0x8F, 0x00));
+                        c.setBackground(new Color(0xFF, 0xEC, 0xB5));
                         setFont(getFont().deriveFont(Font.BOLD));
                     } else {
                         c.setForeground(AppColors.TEXT_PRIMARY);
@@ -349,7 +355,105 @@ public class ReportPanel extends JPanel {
             }
         });
 
-        return wrapTable("Cảnh Báo Tồn Kho (Hết / Sắp Hết)", table, AppColors.DANGER);
+        // ★ Right-click popup: Xem chi tiết lô cận date
+        JPopupMenu popup = new JPopupMenu();
+        JMenuItem menuDetail = new JMenuItem("Xem chi tiết lô cận date");
+        menuDetail.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        menuDetail.addActionListener(e -> showBatchDetail());
+        popup.add(menuDetail);
+
+        tblStockAlerts.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) { showPopup(e); }
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent e) { showPopup(e); }
+            private void showPopup(java.awt.event.MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    int row = tblStockAlerts.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        tblStockAlerts.setRowSelectionInterval(row, row);
+                        popup.show(tblStockAlerts, e.getX(), e.getY());
+                    }
+                }
+            }
+        });
+
+        return wrapTable("Cảnh Báo Tồn Kho (Hết / Sắp Hết / Cận Date)", tblStockAlerts, AppColors.DANGER);
+    }
+
+    /** Popup: Show all near-expiry batches for the selected product */
+    private void showBatchDetail() {
+        int row = tblStockAlerts.getSelectedRow();
+        if (row < 0 || currentStockAlerts == null || row >= currentStockAlerts.size()) return;
+        StockAlertDTO selected = currentStockAlerts.get(row);
+        int maSP = selected.getMaSP();
+        String tenSP = selected.getTenSP();
+
+        // Query all batches for this product that are near expiry or have low stock
+        String sql = "SELECT l.SoLo, l.SoLuong, FORMAT(l.HanSuDung, 'dd/MM/yyyy') AS HSD, " +
+                     "CASE WHEN l.HanSuDung < GETDATE() THEN N'Đã hết hạn' " +
+                     "     WHEN l.HanSuDung <= DATEADD(MONTH, 1, GETDATE()) THEN N'Cận date' " +
+                     "     ELSE N'Còn hạn' END AS Status " +
+                     "FROM LoHang l WHERE l.MaSP = ? AND l.SoLuong > 0 " +
+                     "ORDER BY l.HanSuDung ASC";
+
+        DefaultTableModel detailModel = new DefaultTableModel(
+            new String[]{"Mã Lô", "SL Còn", "Hạn SD", "Trạng Thái"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        try (java.sql.Connection conn = infrastructure.database.DatabaseHelper.getConnection();
+             java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maSP);
+            java.sql.ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                detailModel.addRow(new Object[]{
+                    rs.getString("SoLo"),
+                    String.format("%,d", rs.getInt("SoLuong")),
+                    rs.getString("HSD"),
+                    rs.getNString("Status")
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (detailModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, tenSP + " không còn lô nào có hàng.",
+                "Thông tin", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JTable detailTable = new JTable(detailModel);
+        detailTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        detailTable.setRowHeight(28);
+        detailTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        detailTable.getTableHeader().setBackground(AppColors.TABLE_HEADER_BG);
+        detailTable.getTableHeader().setForeground(AppColors.TABLE_HEADER_FG);
+
+        // Color status column
+        detailTable.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+            { setHorizontalAlignment(SwingConstants.CENTER); }
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object val,
+                    boolean sel, boolean foc, int r, int c) {
+                Component comp = super.getTableCellRendererComponent(t, val, sel, foc, r, c);
+                if (!sel && val != null) {
+                    String s = val.toString();
+                    if (s.contains("hết hạn")) { comp.setForeground(Color.WHITE); comp.setBackground(AppColors.DANGER); setFont(getFont().deriveFont(Font.BOLD)); }
+                    else if (s.contains("Cận")) { comp.setForeground(new Color(0xFF, 0x8F, 0x00)); comp.setBackground(new Color(0xFF, 0xEC, 0xB5)); setFont(getFont().deriveFont(Font.BOLD)); }
+                    else { comp.setForeground(new Color(0x27, 0xAE, 0x60)); comp.setBackground(Color.WHITE); }
+                }
+                return comp;
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(detailTable);
+        scroll.setPreferredSize(new java.awt.Dimension(450, 250));
+        JOptionPane.showMessageDialog(this, scroll,
+            "Chi tiết lô hàng — " + tenSP + " (Mã: " + maSP + ")",
+            JOptionPane.PLAIN_MESSAGE);
     }
 
     // ================================================================
@@ -508,7 +612,7 @@ public class ReportPanel extends JPanel {
     private void updateStockAlerts(List<StockAlertDTO> list) {
         modelStockAlerts.setRowCount(0);
         if (list.isEmpty()) {
-            modelStockAlerts.addRow(new Object[]{"", "Không có cảnh báo", "", "", ""});
+            modelStockAlerts.addRow(new Object[]{"", "Không có cảnh báo", "", "", "", ""});
             return;
         }
         int stt = 1;
@@ -517,7 +621,8 @@ public class ReportPanel extends JPanel {
                     stt++,
                     dto.getTenSP(),
                     String.format("%,d", dto.getTongTon()),
-                    dto.getSoLo(),
+                    dto.getSoLoStr() != null && !dto.getSoLoStr().isEmpty() ? dto.getSoLoStr() : "—",
+                    dto.getHanSuDung() != null && !dto.getHanSuDung().isEmpty() ? dto.getHanSuDung() : "—",
                     dto.getTrangThai()
             });
         }
@@ -599,7 +704,7 @@ public class ReportPanel extends JPanel {
         doc.add(pTitle);
 
         com.lowagie.text.Paragraph pStore = new com.lowagie.text.Paragraph(
-                "Apothecary Pro - Hệ thống Quản lý Nhà thuốc", fSubtitle);
+                "MerPhar - Hệ thống Quản lý Nhà thuốc", fSubtitle);
         pStore.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
         doc.add(pStore);
 

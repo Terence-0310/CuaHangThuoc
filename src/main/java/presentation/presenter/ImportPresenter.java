@@ -198,6 +198,12 @@ public class ImportPresenter {
             view.showWarning("Giỏ nhập trống!\nHãy thêm ít nhất 1 lô hàng.");
             return;
         }
+        // ★ Validate NCC TRƯỚC KHI confirm (bắt buộc chọn NCC)
+        int maNCC = view.getSelectedMaNCC();
+        if (maNCC <= 0) {
+            view.showWarning("Vui lòng chọn Nhà Cung Cấp trước khi lưu phiếu!\nKhông thể nhập kho mà không có NCC.");
+            return;
+        }
 
         // Confirm
         int totalItems = cart.size();
@@ -209,13 +215,6 @@ public class ImportPresenter {
                 + "• Số dòng: " + totalItems + "\n"
                 + "• Tổng tiền: " + String.format("%,.0f", totalMoney) + " VNĐ";
         if (!view.confirm(msg, "Xác nhận nhập kho")) return;
-
-        // Validate NCC
-        int maNCC = view.getSelectedMaNCC();
-        if (maNCC <= 0) {
-            view.showWarning("Vui long chon nha cung cap!");
-            return;
-        }
 
         view.setLoading(true);
         try {

@@ -211,8 +211,8 @@ public class ProductPresenter {
         }
         try {
             Product p = buildProductFromView();
-            if (productService.existsByNameAndUnit(p.getTenSP(), p.getDonViTinh())) {
-                view.showWarning("Sản phẩm '" + p.getTenSP() + "' với ĐVT '" + p.getDonViTinh() + "' đã tồn tại!");
+            if (productService.existsByName(p.getTenSP())) {
+                view.showWarning("Sản phẩm '" + p.getTenSP() + "' đã tồn tại!\nKhông được phép trùng tên sản phẩm.");
                 return;
             }
             p.setTrangThai(true);
@@ -236,6 +236,11 @@ public class ProductPresenter {
         try {
             Product p = buildProductFromView();
             p.setMaSP(selectedMaSP);
+            // ★ Check trùng tên (loại trừ chính nó)
+            if (productService.existsByNameExcluding(p.getTenSP(), selectedMaSP)) {
+                view.showWarning("Sản phẩm '" + p.getTenSP() + "' đã tồn tại!\nKhông được phép trùng tên sản phẩm.");
+                return;
+            }
             p.setTrangThai(true);
             productService.update(p);
             view.showInfo("Cập nhật thành công!");

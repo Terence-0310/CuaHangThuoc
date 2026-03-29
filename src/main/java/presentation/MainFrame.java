@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * MainFrame: Apothecary Pro — Dark navy sidebar with collapsible sections
+ * MainFrame: MerPhar — Dark navy sidebar with collapsible sections
  */
 public class MainFrame extends JFrame {
 
@@ -62,7 +62,7 @@ public class MainFrame extends JFrame {
 
     private void initComponents() {
         String role = Session.getCurrentUser().getVaiTro();
-        setTitle("Apothecary Pro — " + Session.getCurrentUser().getHoTen() + " (" + role + ")");
+        setTitle("MerPhar — " + Session.getCurrentUser().getHoTen() + " (" + role + ")");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setSize(1280, 780);
         setMinimumSize(new Dimension(1000, 600));
@@ -93,7 +93,7 @@ public class MainFrame extends JFrame {
         logoPanel.setBorder(new EmptyBorder(24, 20, 20, 20));
         logoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
 
-        JLabel lblLogo = new JLabel("Apothecary Pro");
+        JLabel lblLogo = new JLabel("MerPhar");
         lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblLogo.setForeground(Color.WHITE);
         lblLogo.setAlignmentX(Component.LEFT_ALIGNMENT);

@@ -108,15 +108,15 @@ public class AttendanceDAO {
         }
     }
 
-    /** Nhận ca — SNAPSHOT: Chụp HourlyRate, OvertimeRate, giờ ca + giờ mặc định ca tại thời điểm nhận ca */
+    /** Nhận ca — SNAPSHOT: Chụp HourlyRate, OvertimeRate, giờ ca + giờ mặc định ca tại thời điểm nhận ca
+     *  ★ ShiftDefaultStart/End lấy từ HR_Schedules (đã frozen lúc xếp ca), KHÔNG từ HR_Shifts (config live) */
     public void clockIn(int empID, int scheduleID, String lateReason) {
         String sql = "INSERT INTO HR_Attendances (EmpID, ScheduleID, ClockIn, LateReason, " +
-                     "SnapshotRate, SnapshotOTRate, SnapshotStart, SnapshotEnd, ShiftDefaultEnd) " +
+                     "SnapshotRate, SnapshotOTRate, SnapshotStart, SnapshotEnd, ShiftDefaultStart, ShiftDefaultEnd) " +
                      "SELECT ?, s.ScheduleID, GETDATE(), ?, " +
-                     "e.HourlyRate, e.OvertimeRate, s.ActualStart, s.ActualEnd, sh.DefaultEndTime " +
+                     "e.HourlyRate, e.OvertimeRate, s.ActualStart, s.ActualEnd, s.ShiftDefaultStart, s.ShiftDefaultEnd " +
                      "FROM HR_Schedules s " +
                      "JOIN HR_Employees e ON e.EmpID = ? " +
-                     "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.ScheduleID = ?";
 
         // ★ Xóa leave schedule của NV trong ngày nếu có (NV đi làm thay → trả lại phép)
@@ -199,15 +199,20 @@ public class AttendanceDAO {
         }
     }
 
-    /** Lấy trước số giờ thực tế và số giờ quy định — Dùng SNAPSHOT */
+    /**
+     * Lấy trước số giờ thực tế và số giờ quy định — Dùng ShiftDefault (cấu hình gốc)
+     * ★ FIX: Dùng ShiftDefaultStart + ShiftDefaultEnd thay vì SnapshotStart + SnapshotEnd
+     *   để baseline luôn = giờ ca gốc (VD: 6h-14h=8h), bất kể admin xếp 5h-14h hay 6h-19h
+     */
     public double[] checkoutPreview(int empID) {
         String sql = 
             "SELECT " +
             "  DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0 as ActualHours, " +
             "  DATEDIFF(MINUTE, " +
-            "      CAST(CAST(a.ClockIn AS DATE) AS DATETIME) + CAST(a.SnapshotStart AS DATETIME), " +
-            "      DATEADD(DAY, CASE WHEN a.SnapshotEnd < a.SnapshotStart THEN 1 ELSE 0 END, " +
-            "          CAST(CAST(a.ClockIn AS DATE) AS DATETIME)) + CAST(a.SnapshotEnd AS DATETIME)" +
+            "      CAST(ISNULL(a.ShiftDefaultStart, a.SnapshotStart) AS DATETIME), " +
+            "      CASE WHEN a.ShiftDefaultEnd < ISNULL(a.ShiftDefaultStart, a.SnapshotStart) " +
+            "           THEN DATEADD(DAY, 1, CAST(a.ShiftDefaultEnd AS DATETIME)) " +
+            "           ELSE CAST(a.ShiftDefaultEnd AS DATETIME) END" +
             "  ) / 60.0 as ScheduledHours " +
             "FROM HR_Attendances a " +
             "WHERE a.EmpID = ? AND a.ClockOut IS NULL AND a.ClockIn IS NOT NULL";
@@ -258,20 +263,36 @@ public class AttendanceDAO {
         return null;
     }
 
-    /** Kết ca & Tính lương — TỰ ĐỘNG TÁCH GIỜ THƯỜNG / TĂNG CA */
+    /**
+     * Kết ca & Tính lương — TỰ ĐỘNG TÁCH GIỜ THƯỜNG / TĂNG CA
+     * ★ FIX: OT baseline = ShiftDefaultStart → ShiftDefaultEnd (giờ cấu hình gốc)
+     *   VD: Ca sáng cấu hình 6h-14h=8h → NV làm 9h → OT = 1h
+     *   Bất kể admin xếp 5h-14h hay 6h-19h, baseline luôn = 8h
+     */
     public void clockOut(int empID, String overtimeReason) {
         // Step 1: ClockOut + TotalHours + OvertimeHours
         String sqlUpdateClockOut =
             "UPDATE a SET " +
             "  a.ClockOut = GETDATE(), " +
             "  a.TotalHours = ROUND(DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0, 2), " +
-            // OT = max(0, totalMinutes - defaultShiftMinutes)
-            // DefaultShiftMinutes = DATEDIFF(MINUTE, SnapshotStart, ShiftDefaultEnd) — adjusted for cross-midnight
+            // ★ OT = max(0, actualHours - shiftConfigHours)
+            // shiftConfigHours = DATEDIFF(MINUTE, ShiftDefaultStart, ShiftDefaultEnd)
+            // Dùng giờ CẤU HÌNH GỐC, KHÔNG dùng giờ admin xếp (SnapshotStart)
             "  a.OvertimeHours = CASE " +
+            "    WHEN a.ShiftDefaultEnd IS NOT NULL AND a.ShiftDefaultStart IS NOT NULL THEN " +
+            "      ROUND(GREATEST(0, " +
+            "        DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0 - " +
+            "        DATEDIFF(MINUTE, CAST(a.ShiftDefaultStart AS DATETIME), " +
+            "          CASE WHEN a.ShiftDefaultEnd < a.ShiftDefaultStart " +
+            "               THEN DATEADD(DAY, 1, CAST(a.ShiftDefaultEnd AS DATETIME)) " +
+            "               ELSE CAST(a.ShiftDefaultEnd AS DATETIME) END" +
+            "        ) / 60.0" +
+            "      ), 2) " +
+            // Fallback: nếu chưa có ShiftDefaultStart (record cũ) → dùng SnapshotStart
             "    WHEN a.ShiftDefaultEnd IS NOT NULL THEN " +
             "      ROUND(GREATEST(0, " +
             "        DATEDIFF(MINUTE, a.ClockIn, GETDATE()) / 60.0 - " +
-            "        DATEDIFF(MINUTE, a.SnapshotStart, " +
+            "        DATEDIFF(MINUTE, CAST(a.SnapshotStart AS DATETIME), " +
             "          CASE WHEN a.ShiftDefaultEnd < a.SnapshotStart " +
             "               THEN DATEADD(DAY, 1, CAST(a.ShiftDefaultEnd AS DATETIME)) " +
             "               ELSE CAST(a.ShiftDefaultEnd AS DATETIME) END" +

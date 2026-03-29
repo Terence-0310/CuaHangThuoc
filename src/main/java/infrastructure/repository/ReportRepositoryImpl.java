@@ -293,34 +293,60 @@ public class ReportRepositoryImpl implements IReportRepository {
 
     @Override
     public List<StockAlertDTO> getStockAlerts() {
-        String sql = "SELECT sp.MaSP, sp.TenSP, " +
-                     "ISNULL(SUM(l.SoLuong), 0) AS TongTon, " +
-                     "COUNT(l.MaLo) AS SoLo, " +
-                     "CASE " +
-                     "  WHEN ISNULL(SUM(l.SoLuong), 0) = 0 THEN N'Hết hàng' " +
-                     "  WHEN ISNULL(SUM(l.SoLuong), 0) <= 10 THEN N'Sắp hết' " +
-                     "  WHEN EXISTS (SELECT 1 FROM LoHang l2 WHERE l2.MaSP = sp.MaSP AND l2.SoLuong > 0 AND l2.HanSuDung <= DATEADD(MONTH, 1, GETDATE())) THEN N'Sắp hết hạn' " +
-                     "  ELSE N'Bình thường' " +
-                     "END AS TrangThai " +
-                     "FROM SanPham sp " +
-                     "LEFT JOIN LoHang l ON sp.MaSP = l.MaSP AND l.SoLuong > 0 " +
-                     "WHERE sp.TrangThai = 1 " +
-                     "GROUP BY sp.MaSP, sp.TenSP " +
-                     "HAVING ISNULL(SUM(l.SoLuong), 0) <= 10 " +
-                     "    OR EXISTS (SELECT 1 FROM LoHang l2 WHERE l2.MaSP = sp.MaSP AND l2.SoLuong > 0 AND l2.HanSuDung <= DATEADD(MONTH, 1, GETDATE())) " +
-                     "ORDER BY TongTon ASC";
+        // ★ 3 loại cảnh báo phân biệt, hiện cả mã lô + hạn sử dụng
+        String sql =
+            // 1. HẾT HÀNG: SP có tổng tồn = 0 (tất cả lô đều hết)
+            "SELECT sp.MaSP, sp.TenSP, 0 AS TongTon, " +
+            "  N'' AS SoLoStr, 0 AS SoLuongLo, N'' AS HanSuDung, " +
+            "  N'Hết hàng' AS TrangThai, 0 AS SortOrder " +
+            "FROM SanPham sp " +
+            "WHERE sp.TrangThai = 1 " +
+            "  AND NOT EXISTS (SELECT 1 FROM LoHang l WHERE l.MaSP = sp.MaSP AND l.SoLuong > 0) " +
+
+            "UNION ALL " +
+
+            // 2. SẮP HẾT: SP có tổng tồn > 0 nhưng <= 10
+            "SELECT sp.MaSP, sp.TenSP, " +
+            "  (SELECT ISNULL(SUM(l2.SoLuong), 0) FROM LoHang l2 WHERE l2.MaSP = sp.MaSP AND l2.SoLuong > 0) AS TongTon, " +
+            "  N'' AS SoLoStr, 0 AS SoLuongLo, N'' AS HanSuDung, " +
+            "  N'Sắp hết' AS TrangThai, 1 AS SortOrder " +
+            "FROM SanPham sp " +
+            "WHERE sp.TrangThai = 1 " +
+            "  AND EXISTS (SELECT 1 FROM LoHang l WHERE l.MaSP = sp.MaSP AND l.SoLuong > 0) " +
+            "  AND (SELECT ISNULL(SUM(l3.SoLuong), 0) FROM LoHang l3 WHERE l3.MaSP = sp.MaSP AND l3.SoLuong > 0) <= 10 " +
+
+            "UNION ALL " +
+
+            // 3. CẬN DATE / ĐÃ HẾT HẠN: GROUP BY sản phẩm (1 dòng/SP), đếm số lô cận date
+            "SELECT sp.MaSP, sp.TenSP, " +
+            "  ISNULL(SUM(l.SoLuong), 0) AS TongTon, " +
+            "  CAST(COUNT(l.MaLo) AS VARCHAR) + N' lô' AS SoLoStr, " +
+            "  0 AS SoLuongLo, " +
+            "  FORMAT(MIN(l.HanSuDung), 'dd/MM/yyyy') AS HanSuDung, " +
+            "  CASE WHEN MIN(l.HanSuDung) < GETDATE() THEN N'Đã hết hạn' ELSE N'Cận date' END AS TrangThai, " +
+            "  CASE WHEN MIN(l.HanSuDung) < GETDATE() THEN 2 ELSE 3 END AS SortOrder " +
+            "FROM LoHang l " +
+            "JOIN SanPham sp ON l.MaSP = sp.MaSP " +
+            "WHERE sp.TrangThai = 1 AND l.SoLuong > 0 " +
+            "  AND l.HanSuDung <= DATEADD(MONTH, 1, GETDATE()) " +
+            "GROUP BY sp.MaSP, sp.TenSP " +
+
+            "ORDER BY SortOrder, TongTon ASC";
+
         List<StockAlertDTO> list = new ArrayList<>();
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                list.add(new StockAlertDTO(
-                        rs.getInt("MaSP"),
-                        rs.getNString("TenSP"),
-                        rs.getInt("TongTon"),
-                        rs.getInt("SoLo"),
-                        rs.getNString("TrangThai")
-                ));
+                StockAlertDTO dto = new StockAlertDTO();
+                dto.setMaSP(rs.getInt("MaSP"));
+                dto.setTenSP(rs.getNString("TenSP"));
+                dto.setTongTon(rs.getInt("TongTon"));
+                dto.setSoLoStr(rs.getNString("SoLoStr"));
+                dto.setSoLuongLo(rs.getInt("SoLuongLo"));
+                dto.setHanSuDung(rs.getNString("HanSuDung"));
+                dto.setTrangThai(rs.getNString("TrangThai"));
+                list.add(dto);
             }
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi truy vấn cảnh báo tồn kho", e);

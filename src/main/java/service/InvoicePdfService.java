@@ -37,7 +37,7 @@ public class InvoicePdfService {
         pTitle.setAlignment(Element.ALIGN_CENTER);
         doc.add(pTitle);
 
-        Paragraph pStore = new Paragraph("Apothecary Pro - Pharmacy Management", FONT_SMALL);
+        Paragraph pStore = new Paragraph("MerPhar - Pharmacy Management", FONT_SMALL);
         pStore.setAlignment(Element.ALIGN_CENTER);
         doc.add(pStore);
         doc.add(new Paragraph(" "));

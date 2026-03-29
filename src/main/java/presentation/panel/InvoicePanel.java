@@ -426,24 +426,25 @@ public class InvoicePanel extends JPanel {
         });
         popup.add(menuDetail);
 
-        // Admin-only actions: Trả hàng + Hủy hóa đơn
-        JMenuItem menuReturn = null;
+        // ★ Trả hàng: mở cho TẤT CẢ nhân viên (không chỉ Admin)
+        popup.addSeparator();
+
+        JMenuItem menuReturn = new JMenuItem("Trả hàng");
+        menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
+        menuReturn.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r >= 0) {
+                int maHD = (int) tableModel.getValueAt(r, 1);
+                Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
+                new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
+                loadInvoices();
+            }
+        });
+        popup.add(menuReturn);
+
+        // Admin-only: Hủy hóa đơn
         JMenuItem menuVoid = null;
         if (common.Session.isAdmin()) {
-            popup.addSeparator();
-
-            menuReturn = new JMenuItem("Trả hàng");
-            menuReturn.setForeground(new Color(0x17, 0xA2, 0xB8));
-            menuReturn.addActionListener(e -> {
-                int r = table.getSelectedRow();
-                if (r >= 0) {
-                    int maHD = (int) tableModel.getValueAt(r, 1);
-                    Frame owner = (Frame) SwingUtilities.getWindowAncestor(this);
-                    new presentation.dialog.ReturnInvoiceDialog(owner, maHD).setVisible(true);
-                    loadInvoices();
-                }
-            });
-            popup.add(menuReturn);
             popup.addSeparator();
 
             menuVoid = new JMenuItem("Hủy hóa đơn");

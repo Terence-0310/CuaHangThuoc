@@ -426,10 +426,12 @@ public class HrDAO {
      */
     public int insertBulkSchedules(int empID, int shiftID, LocalDate fromDate, LocalDate toDate,
                                     LocalTime actualStart, LocalTime actualEnd) {
-        // ★ Chặn trùng: 1 NV chỉ có 1 lịch/ngày (không cho vừa làm vừa nghỉ cùng ngày)
+         // ★ Chặn trùng: 1 NV chỉ có 1 lịch/ngày (không cho vừa làm vừa nghỉ cùng ngày)
+         // ★ Snapshot shift config: Lưu giờ cấu hình gốc vào schedule để admin sửa config sau không ảnh hưởng
          String sql = "IF NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE EmpID = ? AND WorkDate = ?) " +
-                     "INSERT INTO HR_Schedules (EmpID, ShiftID, WorkDate, ActualStart, ActualEnd) " +
-                     "VALUES (?, ?, ?, ?, ?)";
+                     "INSERT INTO HR_Schedules (EmpID, ShiftID, WorkDate, ActualStart, ActualEnd, ShiftDefaultStart, ShiftDefaultEnd) " +
+                     "SELECT ?, ?, ?, ?, ?, sh.DefaultStartTime, sh.DefaultEndTime " +
+                     "FROM HR_Shifts sh WHERE sh.ShiftID = ?";
         int inserted = 0;
         LocalDate today = LocalDate.now();
         boolean isLeave = (actualStart == null || actualEnd == null);
@@ -448,7 +450,7 @@ public class HrDAO {
                 // IF NOT EXISTS params (2)
                 ps.setInt(1, empID);
                 ps.setDate(2, Date.valueOf(current));
-                // INSERT params (5)
+                // SELECT ?, ?, ?, ?, ? FROM HR_Shifts WHERE ShiftID = ?
                 ps.setInt(3, empID);
                 ps.setInt(4, shiftID);
                 ps.setDate(5, Date.valueOf(current));
@@ -459,6 +461,7 @@ public class HrDAO {
                     ps.setTime(6, Time.valueOf(actualStart));
                     ps.setTime(7, Time.valueOf(actualEnd));
                 }
+                ps.setInt(8, shiftID); // ShiftID for sub-select
                 ps.addBatch();
 
                 current = current.plusDays(1);
@@ -549,8 +552,12 @@ public class HrDAO {
      */
     public void updateSchedule(int scheduleID, int empID, int shiftID, LocalDate workDate,
                                 LocalTime actualStart, LocalTime actualEnd) {
-        String sql = "UPDATE HR_Schedules SET EmpID = ?, ShiftID = ?, WorkDate = ?, " +
-                     "ActualStart = ?, ActualEnd = ? WHERE ScheduleID = ?";
+        // ★ Snapshot shift config: re-capture DefaultStart/End khi đổi ca
+        String sql = "UPDATE s SET s.EmpID = ?, s.ShiftID = ?, s.WorkDate = ?, " +
+                     "s.ActualStart = ?, s.ActualEnd = ?, " +
+                     "s.ShiftDefaultStart = sh.DefaultStartTime, s.ShiftDefaultEnd = sh.DefaultEndTime " +
+                     "FROM HR_Schedules s JOIN HR_Shifts sh ON sh.ShiftID = ? " +
+                     "WHERE s.ScheduleID = ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, empID);
@@ -560,7 +567,8 @@ public class HrDAO {
             else ps.setNull(4, java.sql.Types.TIME);
             if (actualEnd != null) ps.setTime(5, Time.valueOf(actualEnd));
             else ps.setNull(5, java.sql.Types.TIME);
-            ps.setInt(6, scheduleID);
+            ps.setInt(6, shiftID);  // JOIN HR_Shifts
+            ps.setInt(7, scheduleID);
             ps.executeUpdate();
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UQ_Schedule_EmpDate")) {

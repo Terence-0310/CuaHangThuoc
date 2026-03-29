@@ -13,6 +13,8 @@ public interface IProductRepository {
     Product getById(int maSP);
     List<Product> search(String keyword);
     boolean existsByNameAndUnit(String tenSP, String donViTinh);
+    boolean existsByName(String tenSP);
+    boolean existsByNameExcluding(String tenSP, int excludeMaSP);
 
     // ★ Phân trang + Sort server-side
     List<Product> getPagedWithStock(int offset, int pageSize, String keyword, String statusFilter,

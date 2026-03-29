@@ -117,7 +117,10 @@ public class ReturnInvoiceDialog extends JDialog {
 
         // Listen for changes to recalculate totals
         tableModel.addTableModelListener(e -> {
-            if (e.getColumn() == 6) recalculate();
+            int col = e.getColumn();
+            if (col == 6 || col == javax.swing.event.TableModelEvent.ALL_COLUMNS) {
+                recalculate();
+            }
         });
 
         JScrollPane scroll = new JScrollPane(table);
@@ -241,24 +244,32 @@ public class ReturnInvoiceDialog extends JDialog {
         }
     }
 
+    private boolean recalculating = false;
+
     private void recalculate() {
-        BigDecimal total = BigDecimal.ZERO;
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            Object slObj = tableModel.getValueAt(i, 6);
-            int slTra = slObj instanceof Integer ? (int) slObj : 0;
-            int conLai = (int) tableModel.getValueAt(i, 5);
+        if (recalculating) return; // ★ guard against re-entry
+        recalculating = true;
+        try {
+            BigDecimal total = BigDecimal.ZERO;
+            for (int i = 0; i < tableModel.getRowCount(); i++) {
+                Object slObj = tableModel.getValueAt(i, 6);
+                int slTra = slObj instanceof Integer ? (int) slObj : 0;
+                int conLai = (int) tableModel.getValueAt(i, 5);
 
-            // Clamp
-            if (slTra < 0) slTra = 0;
-            if (slTra > conLai) slTra = conLai;
-            tableModel.setValueAt(slTra, i, 6);
+                // Clamp
+                if (slTra < 0) slTra = 0;
+                if (slTra > conLai) slTra = conLai;
+                tableModel.setValueAt(slTra, i, 6);
 
-            BigDecimal donGia = (BigDecimal) batchData.get(i)[4];
-            BigDecimal refund = donGia.multiply(BigDecimal.valueOf(slTra));
-            tableModel.setValueAt(CurrencyFormatter.format(refund), i, 8);
-            total = total.add(refund);
+                BigDecimal donGia = (BigDecimal) batchData.get(i)[4];
+                BigDecimal refund = donGia.multiply(BigDecimal.valueOf(slTra));
+                tableModel.setValueAt(CurrencyFormatter.format(refund), i, 8);
+                total = total.add(refund);
+            }
+            lblTotalRefund.setText("Tổng hoàn: " + CurrencyFormatter.format(total));
+        } finally {
+            recalculating = false;
         }
-        lblTotalRefund.setText("Tổng hoàn: " + CurrencyFormatter.format(total));
     }
 
     // ================================================================

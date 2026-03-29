@@ -14,6 +14,8 @@ public interface IProductService {
     Product getById(int maSP);
     List<Product> search(String keyword);
     boolean existsByNameAndUnit(String tenSP, String donViTinh);
+    boolean existsByName(String tenSP);
+    boolean existsByNameExcluding(String tenSP, int excludeMaSP);
     List<Product> getPagedWithStock(int offset, int pageSize, String keyword, String statusFilter,
                                     String sortColumn, String sortDirection);
     int countFiltered(String keyword, String statusFilter);

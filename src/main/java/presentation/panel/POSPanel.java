@@ -1347,7 +1347,7 @@ public class POSPanel extends JPanel {
             com.lowagie.text.Font amountFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 16, com.lowagie.text.Font.BOLD, java.awt.Color.RED);
 
             // Store name
-            com.lowagie.text.Paragraph pTitle = new com.lowagie.text.Paragraph("APOTHECARY PRO", titleFont);
+            com.lowagie.text.Paragraph pTitle = new com.lowagie.text.Paragraph("MERPHAR", titleFont);
             pTitle.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             doc.add(pTitle);
 

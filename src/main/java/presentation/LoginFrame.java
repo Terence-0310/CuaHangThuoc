@@ -14,7 +14,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 /**
- * LoginFrame: Apothecary Pro theme
+ * LoginFrame: MerPhar theme
  */
 public class LoginFrame extends JFrame {
 
@@ -56,7 +56,7 @@ public class LoginFrame extends JFrame {
         headerBar.setBackground(Color.WHITE);
         headerBar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblTitle = new JLabel("Apothecary Pro");
+        JLabel lblTitle = new JLabel("MerPhar");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblTitle.setForeground(AppColors.PRIMARY);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);

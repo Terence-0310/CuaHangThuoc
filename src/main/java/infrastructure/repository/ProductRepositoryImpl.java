@@ -93,6 +93,39 @@ public class ProductRepositoryImpl implements IProductRepository {
         return false;
     }
 
+    /** ★ Check trùng tên SP (bất kể ĐVT) — dùng cho INSERT */
+    @Override
+    public boolean existsByName(String tenSP) {
+        String sql = "SELECT COUNT(1) FROM SanPham WHERE TenSP = ?";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setNString(1, tenSP.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi check trùng tên SP", e);
+        }
+        return false;
+    }
+
+    /** ★ Check trùng tên SP (loại trừ chính nó) — dùng cho UPDATE */
+    @Override
+    public boolean existsByNameExcluding(String tenSP, int excludeMaSP) {
+        String sql = "SELECT COUNT(1) FROM SanPham WHERE TenSP = ? AND MaSP != ?";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setNString(1, tenSP.trim());
+            ps.setInt(2, excludeMaSP);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi check trùng tên SP", e);
+        }
+        return false;
+    }
+
     @Override
     public List<Product> getPagedWithStock(int offset, int pageSize, String keyword, String statusFilter,
                                             String sortColumn, String sortDirection) {

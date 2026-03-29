@@ -47,6 +47,16 @@ public class ProductServiceImpl implements IProductService {
     }
 
     @Override
+    public boolean existsByName(String tenSP) {
+        return productRepo.existsByName(tenSP);
+    }
+
+    @Override
+    public boolean existsByNameExcluding(String tenSP, int excludeMaSP) {
+        return productRepo.existsByNameExcluding(tenSP, excludeMaSP);
+    }
+
+    @Override
     public List<Product> getPagedWithStock(int offset, int pageSize, String keyword, String statusFilter,
                                             String sortColumn, String sortDirection) {
         return productRepo.getPagedWithStock(offset, pageSize, keyword, statusFilter, sortColumn, sortDirection);
