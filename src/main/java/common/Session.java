@@ -87,4 +87,28 @@ public class Session {
         }
         columnEnsured = true;
     }
+
+    /**
+     * ★ Kiểm tra NV hiện tại đã chấm công chưa (có HR_Attendances ClockOut IS NULL hôm nay?)
+     * Admin → luôn trả true (bypass).
+     * NV không có trong HR_Employees → trả false.
+     */
+    public static boolean isClockedIn() {
+        if (currentUser == null) return false;
+        if (currentUser.isAdmin()) return true; // Admin bypass
+
+        String sql =
+            "SELECT 1 FROM HR_Attendances a " +
+            "JOIN HR_Employees e ON a.EmpID = e.EmpID " +
+            "WHERE e.MaND = ? AND a.ClockIn IS NOT NULL AND a.ClockOut IS NULL";
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, currentUser.getMaND());
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            return false; // Fail-safe: chặn nếu lỗi
+        }
+    }
 }

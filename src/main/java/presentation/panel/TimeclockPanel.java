@@ -243,6 +243,12 @@ public class TimeclockPanel extends JPanel {
                     "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
+            // ★ Refresh sidebar: mở khóa các tab cho NV sau khi chấm công
+            java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+            if (win instanceof presentation.MainFrame) {
+                ((presentation.MainFrame) win).refreshSidebar();
+            }
+
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi khi Nhận ca: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
@@ -327,6 +333,12 @@ public class TimeclockPanel extends JPanel {
             JOptionPane.showMessageDialog(this, "Kết ca thành công!\nTạm biệt " + emp.getFullName() +
                     "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);
+
+            // ★ Refresh sidebar: khóa các tab lại sau khi kết ca
+            java.awt.Window win = SwingUtilities.getWindowAncestor(this);
+            if (win instanceof presentation.MainFrame) {
+                ((presentation.MainFrame) win).refreshSidebar();
+            }
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Lỗi khi Kết ca: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);

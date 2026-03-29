@@ -39,6 +39,12 @@ public class MainFrame extends JFrame {
 
     private JButton btnLogout;
 
+    // ★ Section toggle references (for clock-in enforcement)
+    private JButton btnQuanLyToggle;
+    private JPanel quanLyContainer;
+    private JButton btnQuanTriToggle;
+    private JPanel quanTriContainer;
+
     private JButton activeButton = null;
     private final List<JButton> allNavButtons = new ArrayList<>();
 
@@ -137,7 +143,7 @@ public class MainFrame extends JFrame {
         btnHrAdmin   = createSubButton("Nhân Sự (HRM)");
         btnInvoice   = createSubButton("Hóa Đơn");
 
-        JPanel quanLyContainer = new JPanel();
+        quanLyContainer = new JPanel();
         quanLyContainer.setLayout(new BoxLayout(quanLyContainer, BoxLayout.Y_AXIS));
         quanLyContainer.setBackground(AppColors.SIDEBAR_BG);
         quanLyContainer.setVisible(false); // collapsed by default
@@ -149,7 +155,7 @@ public class MainFrame extends JFrame {
         quanLyContainer.add(btnHrAdmin);
         quanLyContainer.add(btnInvoice);
 
-        JButton btnQuanLyToggle = createSectionToggle("QUẢN LÝ", quanLyContainer);
+        btnQuanLyToggle = createSectionToggle("QUẢN LÝ", quanLyContainer);
         sidebar.add(btnQuanLyToggle);
         sidebar.add(quanLyContainer);
 
@@ -160,14 +166,14 @@ public class MainFrame extends JFrame {
         // ============================================================
         btnUserMgmt = createSubButton("Người Dùng");
 
-        JPanel quanTriContainer = new JPanel();
+        quanTriContainer = new JPanel();
         quanTriContainer.setLayout(new BoxLayout(quanTriContainer, BoxLayout.Y_AXIS));
         quanTriContainer.setBackground(AppColors.SIDEBAR_BG);
         quanTriContainer.setVisible(false); // collapsed by default
 
         quanTriContainer.add(btnUserMgmt);
 
-        JButton btnQuanTriToggle = createSectionToggle("QUẢN TRỊ", quanTriContainer);
+        btnQuanTriToggle = createSectionToggle("QUẢN TRỊ", quanTriContainer);
         sidebar.add(btnQuanTriToggle);
         sidebar.add(quanTriContainer);
 
@@ -239,30 +245,52 @@ public class MainFrame extends JFrame {
         // Default view
         if (Session.isAdmin()) {
             switchPanel("dashboard", btnDashboard);
+        } else if (Session.isClockedIn()) {
+            switchPanel("pos", btnPOS);
         } else {
-            switchPanel("pos", btnPOS); // Default as POS since check-in is popup
+            switchPanel("timeclock", btnCheckIn);
         }
     }
 
     private void applyPermissions() {
+        boolean isClockedIn = Session.isClockedIn();
+
         if (!Session.isAdmin()) {
-            btnDashboard.setVisible(false);
-            btnImport.setVisible(false);
-            // Quản Lý: ẩn NCC, Kho, HRM (NV chỉ coi SP + KH + Hóa đơn)
-            btnSupplier.setVisible(false);
-            btnInventory.setVisible(false);
-            btnHrAdmin.setVisible(false);
-            // Quản Trị: ẩn toàn bộ
-            btnUserMgmt.getParent().setVisible(false);
-            for (Component c : sidebar.getComponents()) {
-                if (c instanceof JButton) {
-                    JButton b = (JButton) c;
-                    if (b.getText() != null && b.getText().contains("QUẢN TRỊ")) {
-                        b.setVisible(false);
-                    }
-                }
+            // ★ NV chưa chấm công → CHỈ hiện Chấm Công + Đăng Xuất
+            if (!isClockedIn) {
+                btnDashboard.setVisible(false);
+                btnPOS.setVisible(false);
+                btnImport.setVisible(false);
+                btnQuanLyToggle.setVisible(false);
+                quanLyContainer.setVisible(false);
+                btnQuanTriToggle.setVisible(false);
+                quanTriContainer.setVisible(false);
+                // Default view: Chấm Công
+                switchPanel("timeclock", btnCheckIn);
+            } else {
+                // NV đã chấm công → hiện các tab bình thường
+                btnDashboard.setVisible(false);
+                btnPOS.setVisible(true);
+                btnImport.setVisible(false);
+                btnQuanLyToggle.setVisible(true);
+                // Quản Lý: ẩn NCC, Kho, HRM (NV chỉ coi SP + KH + Hóa đơn)
+                btnSupplier.setVisible(false);
+                btnInventory.setVisible(false);
+                btnHrAdmin.setVisible(false);
+                // Quản Trị: ẩn toàn bộ
+                btnQuanTriToggle.setVisible(false);
+                quanTriContainer.setVisible(false);
             }
         }
+    }
+
+    /**
+     * ★ Gọi sau khi NV chấm công thành công → refresh sidebar cho phép bán hàng
+     */
+    public void refreshSidebar() {
+        applyPermissions();
+        sidebar.revalidate();
+        sidebar.repaint();
     }
 
     private void switchPanel(String name, JButton button) {
