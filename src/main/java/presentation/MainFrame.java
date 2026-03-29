@@ -273,6 +273,8 @@ public class MainFrame extends JFrame {
                 btnPOS.setVisible(true);
                 btnImport.setVisible(false);
                 btnQuanLyToggle.setVisible(true);
+                // Mặc định mở menu quản lý cho NV thấy
+                quanLyContainer.setVisible(true); 
                 // Quản Lý: ẩn NCC, Kho, HRM (NV chỉ coi SP + KH + Hóa đơn)
                 btnSupplier.setVisible(false);
                 btnInventory.setVisible(false);
@@ -285,10 +287,15 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * ★ Gọi sau khi NV chấm công thành công → refresh sidebar cho phép bán hàng
+     * ★ Gọi sau khi NV chấm công hoặc kết ca thành công → refresh sidebar
      */
     public void refreshSidebar() {
         applyPermissions();
+        if (Session.isClockedIn() && !Session.isAdmin()) {
+            switchPanel("pos", btnPOS); // Tự động chuyển qua Bán hàng sau khi nhận ca
+        } else if (!Session.isAdmin()) {
+            switchPanel("timeclock", btnCheckIn); // Trở về màn chấm công sau khi kết ca
+        }
         sidebar.revalidate();
         sidebar.repaint();
     }

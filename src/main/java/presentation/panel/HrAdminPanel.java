@@ -36,6 +36,8 @@ public class HrAdminPanel extends JPanel {
     private JTextField txtEmpID, txtFullName, txtPinCode, txtPhone, txtHourlyRate, txtOvertimeRate;
     private common.DatePickerField dpHireDate;
     private JComboBox<String> cboStatus;
+    private JComboBox<String> cboLinkedAccount; // ★ ComboBox liên kết tài khoản đăng nhập
+    private java.util.List<Object[]> accountList; // {MaND, displayText}
     private JButton btnAdd, btnUpdate, btnDelete, btnClear;
     private DefaultTableModel empModel;
     private JTable empTable;
@@ -231,6 +233,13 @@ public class HrAdminPanel extends JPanel {
         cboStatus.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         addFormRow(formPanel, "Trạng thái:", cboStatus);
 
+        // ★ Tài khoản đăng nhập liên kết
+        cboLinkedAccount = new JComboBox<>();
+        cboLinkedAccount.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        cboLinkedAccount.setToolTipText("Chọn tài khoản đăng nhập (NguoiDung) gắn với NV này");
+        addFormRow(formPanel, "TK Đăng nhập:", cboLinkedAccount);
+        refreshAccountCombo(-1); // Load lần đầu
+
         formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // === Buttons (2x2 grid) ===
@@ -387,6 +396,19 @@ public class HrAdminPanel extends JPanel {
         if (fullEmp.getHireDate() != null) dpHireDate.setDate(fullEmp.getHireDate());
         cboStatus.setSelectedItem(fullEmp.getStatus());
 
+        // ★ Chọn đúng tài khoản liên kết trong ComboBox
+        refreshAccountCombo(selectedEmpID);
+        if (fullEmp.getMaND() != null && accountList != null) {
+            for (int i = 0; i < accountList.size(); i++) {
+                if ((int) accountList.get(i)[0] == fullEmp.getMaND()) {
+                    cboLinkedAccount.setSelectedIndex(i + 1); // +1 vì index 0 = "-- Chưa liên kết --"
+                    break;
+                }
+            }
+        } else {
+            cboLinkedAccount.setSelectedIndex(0);
+        }
+
         btnAdd.setEnabled(false);
         btnUpdate.setEnabled(true);
         btnDelete.setEnabled(true);
@@ -402,6 +424,8 @@ public class HrAdminPanel extends JPanel {
         txtOvertimeRate.setText("");
         dpHireDate.setDate(java.time.LocalDate.now());
         cboStatus.setSelectedIndex(0);
+        refreshAccountCombo(-1);
+        cboLinkedAccount.setSelectedIndex(0);
         empTable.clearSelection();
         txtEmpSearch.setText("");
 
@@ -461,7 +485,28 @@ public class HrAdminPanel extends JPanel {
         emp.setOvertimeRate(ot.isEmpty() ? BigDecimal.ZERO : new BigDecimal(ot));
         emp.setHireDate(dpHireDate.getDate());
         emp.setStatus((String) cboStatus.getSelectedItem());
+        // ★ Gắn MaND từ ComboBox
+        int selectedIdx = cboLinkedAccount.getSelectedIndex();
+        if (selectedIdx > 0 && accountList != null && selectedIdx <= accountList.size()) {
+            emp.setMaND((Integer) accountList.get(selectedIdx - 1)[0]);
+        } else {
+            emp.setMaND(null); // "-- Chưa liên kết --"
+        }
         return emp;
+    }
+
+    /** ★ Load danh sách tài khoản vào ComboBox */
+    private void refreshAccountCombo(int currentEmpID) {
+        cboLinkedAccount.removeAllItems();
+        cboLinkedAccount.addItem("-- Chưa liên kết --");
+        try {
+            accountList = hrService.getUserAccountsForLinking(currentEmpID);
+            for (Object[] acc : accountList) {
+                cboLinkedAccount.addItem((String) acc[1]);
+            }
+        } catch (Exception ignored) {
+            accountList = new java.util.ArrayList<>();
+        }
     }
 
     private void doInsert() {

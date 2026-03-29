@@ -40,6 +40,9 @@ public class HrDAO {
         e.setStatus(rs.getNString("Status"));
         Timestamp ts = rs.getTimestamp("CreatedAt");
         if (ts != null) e.setCreatedAt(ts.toLocalDateTime());
+        // ★ FIX: Đọc MaND liên kết tài khoản đăng nhập
+        int maND = rs.getInt("MaND");
+        e.setMaND(rs.wasNull() ? null : maND);
         return e;
     }
 
@@ -81,10 +84,11 @@ public class HrDAO {
      * Bắt lỗi trùng PIN → ném RuntimeException với message chứa "TRÙNG MÃ PIN".
      */
     public int insertEmployee(Employee emp) {
+        // ★ FIX: Thêm cột MaND để gắn tài khoản đăng nhập ngay lúc tạo NV
         String sql = "INSERT INTO HR_Employees (FullName, PinCode, Phone, HourlyRate, OvertimeRate, " +
-                     "HireDate, ResignDate, Status) " +
+                     "HireDate, ResignDate, Status, MaND) " +
                      "OUTPUT INSERTED.EmpID " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setNString(1, emp.getFullName());
@@ -95,6 +99,11 @@ public class HrDAO {
             ps.setDate(6, emp.getHireDate() != null ? Date.valueOf(emp.getHireDate()) : null);
             ps.setDate(7, emp.getResignDate() != null ? Date.valueOf(emp.getResignDate()) : null);
             ps.setNString(8, emp.getStatus());
+            if (emp.getMaND() != null) {
+                ps.setInt(9, emp.getMaND());
+            } else {
+                ps.setNull(9, java.sql.Types.INTEGER);
+            }
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
             }
@@ -112,8 +121,9 @@ public class HrDAO {
      * Bắt lỗi trùng PIN khi update.
      */
     public void updateEmployee(Employee emp) {
+        // ★ FIX: Thêm MaND vào UPDATE để admin có thể thay đổi liên kết tài khoản
         String sql = "UPDATE HR_Employees SET FullName = ?, PinCode = ?, Phone = ?, HourlyRate = ?, " +
-                     "OvertimeRate = ?, HireDate = ?, ResignDate = ?, Status = ? " +
+                     "OvertimeRate = ?, HireDate = ?, ResignDate = ?, Status = ?, MaND = ? " +
                      "WHERE EmpID = ?";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -125,7 +135,12 @@ public class HrDAO {
             ps.setDate(6, emp.getHireDate() != null ? Date.valueOf(emp.getHireDate()) : null);
             ps.setDate(7, emp.getResignDate() != null ? Date.valueOf(emp.getResignDate()) : null);
             ps.setNString(8, emp.getStatus());
-            ps.setInt(9, emp.getEmpID());
+            if (emp.getMaND() != null) {
+                ps.setInt(9, emp.getMaND());
+            } else {
+                ps.setNull(9, java.sql.Types.INTEGER);
+            }
+            ps.setInt(10, emp.getEmpID());
             ps.executeUpdate();
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UQ_HR_Employees_PinCode")) {
@@ -146,6 +161,35 @@ public class HrDAO {
             ps.setInt(1, empID);
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    /**
+     * ★ Lấy danh sách tài khoản NguoiDung (NV) chưa liên kết hoặc đang liên kết với empID hiện tại.
+     * Dùng cho ComboBox chọn tài khoản khi thêm/sửa NV.
+     * @return List of Object[]{MaND, displayText} — e.g. {7, "nv01 — Vương Gia Long"}
+     */
+    public java.util.List<Object[]> getUserAccountsForLinking(int currentEmpID) {
+        // Lấy tất cả tài khoản NV (VaiTro != 'Admin') chưa được gắn cho NV nào khác, hoặc đang gắn cho chính empID này
+        String sql = "SELECT nd.MaND, nd.TenDangNhap, nd.HoTen FROM NguoiDung nd " +
+                     "WHERE nd.TrangThai = 1 " +
+                     "AND NOT EXISTS ( " +
+                     "  SELECT 1 FROM HR_Employees e WHERE e.MaND = nd.MaND AND e.EmpID != ? " +
+                     ") " +
+                     "ORDER BY nd.TenDangNhap";
+        java.util.List<Object[]> list = new java.util.ArrayList<>();
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, currentEmpID);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int maND = rs.getInt("MaND");
+                    String login = rs.getString("TenDangNhap");
+                    String hoTen = rs.getNString("HoTen");
+                    list.add(new Object[]{maND, login + " — " + hoTen});
+                }
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return list;
     }
 
     /** Kiểm tra PIN đã tồn tại chưa (dùng cho validate trước khi Insert) */

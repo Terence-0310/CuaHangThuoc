@@ -52,6 +52,12 @@ public class HrService {
         hrDAO.updateEmployee(emp);
     }
 
+    /** ★ Lấy danh sách tài khoản đăng nhập cho liên kết nhân viên */
+    public java.util.List<Object[]> getUserAccountsForLinking(int currentEmpID) {
+        checkAdminPermission();
+        return hrDAO.getUserAccountsForLinking(currentEmpID);
+    }
+
     /** XÓA MỀM — KHÔNG DELETE */
     public void softDeleteEmployee(int empID) {
         checkAdminPermission();

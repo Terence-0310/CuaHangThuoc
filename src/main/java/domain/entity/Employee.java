@@ -20,6 +20,7 @@ public class Employee {
     private LocalDate resignDate;
     private String status;
     private LocalDateTime createdAt;
+    private Integer maND; // ★ FK → NguoiDung.MaND (liên kết tài khoản đăng nhập)
 
     // Dynamic fields (tính từ DAO, không lưu DB)
     private int weeklyLeaveRemaining;
@@ -70,6 +71,9 @@ public class Employee {
 
     public int getYearsWorked() { return yearsWorked; }
     public void setYearsWorked(int yearsWorked) { this.yearsWorked = yearsWorked; }
+
+    public Integer getMaND() { return maND; }
+    public void setMaND(Integer maND) { this.maND = maND; }
 
     /** Soft Delete check */
     public boolean isActive() { return "Đang làm".equals(status); }
