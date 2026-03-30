@@ -443,7 +443,6 @@ public class PayrollPanel extends JPanel {
         String fullName;
         BigDecimal tongGio;
         BigDecimal tongTien;
-        int payrollId;
         boolean paid;
         int month, year;
     }

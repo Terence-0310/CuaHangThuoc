@@ -1143,7 +1143,6 @@ public class HrAdminPanel extends JPanel {
         return spinner;
     }
 
-    @SuppressWarnings("deprecation")
     /** Kiểm tra ca có phải loại nghỉ phép không */
     private boolean isLeaveShift(Shift s) {
         String name = s.getShiftName();
@@ -1163,20 +1162,22 @@ public class HrAdminPanel extends JPanel {
             // Ca làm việc: mở spinner, tự điền giờ mặc định
             spnActualStart.setEnabled(true);
             spnActualEnd.setEnabled(true);
-            java.util.Date sd = new java.util.Date();
-            sd.setHours(s.getStartTime().getHour());
-            sd.setMinutes(s.getStartTime().getMinute());
-            sd.setSeconds(0);
-            java.util.Date ed = new java.util.Date();
-            ed.setHours(s.getEndTime().getHour());
-            ed.setMinutes(s.getEndTime().getMinute());
-            ed.setSeconds(0);
-            spnActualStart.setValue(sd);
-            spnActualEnd.setValue(ed);
+            
+            java.util.Calendar calStart = java.util.Calendar.getInstance();
+            calStart.set(java.util.Calendar.HOUR_OF_DAY, s.getStartTime().getHour());
+            calStart.set(java.util.Calendar.MINUTE, s.getStartTime().getMinute());
+            calStart.set(java.util.Calendar.SECOND, 0);
+            
+            java.util.Calendar calEnd = java.util.Calendar.getInstance();
+            calEnd.set(java.util.Calendar.HOUR_OF_DAY, s.getEndTime().getHour());
+            calEnd.set(java.util.Calendar.MINUTE, s.getEndTime().getMinute());
+            calEnd.set(java.util.Calendar.SECOND, 0);
+            
+            spnActualStart.setValue(calStart.getTime());
+            spnActualEnd.setValue(calEnd.getTime());
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void switchMode(boolean isEdit, Schedule sc) {
         if (isEdit && sc != null) {
             currentEditScheduleId = sc.getScheduleID();
@@ -1198,16 +1199,17 @@ public class HrAdminPanel extends JPanel {
             dpTo.setDate(sc.getWorkDate());
             dpTo.setEnabled(false);
             if (sc.getActualStart() != null && sc.getActualEnd() != null) {
-                java.util.Date sDate = new java.util.Date();
-                sDate.setHours(sc.getActualStart().getHour());
-                sDate.setMinutes(sc.getActualStart().getMinute());
-                sDate.setSeconds(0);
-                spnActualStart.setValue(sDate);
-                java.util.Date eDate = new java.util.Date();
-                eDate.setHours(sc.getActualEnd().getHour());
-                eDate.setMinutes(sc.getActualEnd().getMinute());
-                eDate.setSeconds(0);
-                spnActualEnd.setValue(eDate);
+                java.util.Calendar calStart = java.util.Calendar.getInstance();
+                calStart.set(java.util.Calendar.HOUR_OF_DAY, sc.getActualStart().getHour());
+                calStart.set(java.util.Calendar.MINUTE, sc.getActualStart().getMinute());
+                calStart.set(java.util.Calendar.SECOND, 0);
+                spnActualStart.setValue(calStart.getTime());
+                
+                java.util.Calendar calEnd = java.util.Calendar.getInstance();
+                calEnd.set(java.util.Calendar.HOUR_OF_DAY, sc.getActualEnd().getHour());
+                calEnd.set(java.util.Calendar.MINUTE, sc.getActualEnd().getMinute());
+                calEnd.set(java.util.Calendar.SECOND, 0);
+                spnActualEnd.setValue(calEnd.getTime());
             }
             // autoFillShiftTimes() sẽ tự disable spinner nếu là ca nghỉ
         } else {
@@ -1493,21 +1495,38 @@ public class HrAdminPanel extends JPanel {
         return btn;
     }
 
-    /** DocumentFilter: chỉ cho nhập số vào ô lương/ngày nghỉ */
+    /** DocumentFilter: chỉ cho nhập số vào ô lương + tự thêm dấu phẩy */
     private void applyNumberFilter(JTextField field) {
         ((javax.swing.text.AbstractDocument) field.getDocument()).setDocumentFilter(
             new javax.swing.text.DocumentFilter() {
                 @Override
                 public void insertString(FilterBypass fb, int offset, String string,
                         javax.swing.text.AttributeSet attr) throws javax.swing.text.BadLocationException {
-                    if (string != null) super.insertString(fb, offset, string.replaceAll("[^0-9]", ""), attr);
+                    if (string != null) super.insertString(fb, offset, string.replaceAll("[^0-9,]", ""), attr);
                 }
                 @Override
                 public void replace(FilterBypass fb, int offset, int length, String text,
                         javax.swing.text.AttributeSet attrs) throws javax.swing.text.BadLocationException {
-                    if (text != null) super.replace(fb, offset, length, text.replaceAll("[^0-9]", ""), attrs);
+                    if (text != null) super.replace(fb, offset, length, text.replaceAll("[^0-9,]", ""), attrs);
                 }
             });
+        field.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                int code = e.getKeyCode();
+                if (code == java.awt.event.KeyEvent.VK_LEFT || code == java.awt.event.KeyEvent.VK_RIGHT) return;
+                String text = field.getText().replace(",", "").trim();
+                if (!text.isEmpty()) {
+                    try {
+                        long val = Long.parseLong(text);
+                        String formatted = String.format("%,d", val);
+                        if (!field.getText().equals(formatted)) {
+                            field.setText(formatted);
+                        }
+                    } catch (NumberFormatException ex) {}
+                }
+            }
+        });
     }
 
     private void showWarning(String msg) {
