@@ -221,10 +221,10 @@ public class CustomerPanel extends JPanel {
         // === Buttons ===
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 8, 8));
         btnPanel.setOpaque(false);
-        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 84));
         btnPanel.setAlignmentX(LEFT_ALIGNMENT);
 
-        btnAdd = createActionButton("Thêm Mới", AppColors.SUCCESS);
+        btnAdd = createActionButton("Thêm Mới", AppColors.PRIMARY);
         btnUpdate = createActionButton("Cập Nhật", AppColors.PRIMARY);
         btnClear = createActionButton("Làm Mới", AppColors.SECONDARY);
         btnDelete = createActionButton("Xóa", AppColors.DANGER);
@@ -992,13 +992,13 @@ public class CustomerPanel extends JPanel {
 
     private JButton createActionButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(0, 36));
+        btn.setPreferredSize(new Dimension(0, 38));
         return btn;
     }
 }

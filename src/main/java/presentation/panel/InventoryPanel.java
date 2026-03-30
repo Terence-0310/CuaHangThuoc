@@ -405,7 +405,7 @@ public class InventoryPanel extends JPanel {
         btnPanel.setAlignmentX(LEFT_ALIGNMENT);
         btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 84));
 
-        btnUpdate = createButton("Cập Nhật", new Color(0x17, 0xA2, 0xB8));
+        btnUpdate = createButton("Cập Nhật", AppColors.PRIMARY);
         btnUpdate.setEnabled(false);
         btnUpdate.addActionListener(e -> doUpdate());
 
@@ -1356,13 +1356,13 @@ public class InventoryPanel extends JPanel {
 
     private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
+        btn.setPreferredSize(new Dimension(0, 38));
         Color hover = bg.darker();
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) { if (btn.isEnabled()) btn.setBackground(hover); }

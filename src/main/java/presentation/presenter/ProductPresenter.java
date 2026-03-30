@@ -170,7 +170,6 @@ public class ProductPresenter {
         view.refreshHeaderCheckbox();
     }
 
-    /** Tính số checkbox đang tick → ẩn/hiện bulk buttons */
     public void updateBulkVisibility() {
         if (!Session.isAdmin()) return;
         int checkedCount = 0;
@@ -179,6 +178,7 @@ public class ProductPresenter {
         }
         boolean show = checkedCount >= 2 || globalSelectedIds.size() >= 2;
         view.setBulkPanelVisible(show);
+        view.updateButtonState(selectedMaSP >= 0);
     }
 
     // ============== ROW SELECTION ==============

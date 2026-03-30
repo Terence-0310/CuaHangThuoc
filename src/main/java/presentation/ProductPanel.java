@@ -183,7 +183,7 @@ public class ProductPanel extends JPanel implements IProductView {
         btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 84));
 
         btnAdd = createButton("Thêm Mới", AppColors.PRIMARY);
-        btnUpdate = createButton("Cập Nhật", new Color(0x17, 0xA2, 0xB8));
+        btnUpdate = createButton("Cập Nhật", AppColors.PRIMARY);
         btnToggle = createButton("Ngừng Bán", AppColors.DANGER);
         btnClear = createButton("Làm Mới", AppColors.SECONDARY);
 
@@ -199,11 +199,11 @@ public class ProductPanel extends JPanel implements IProductView {
         bulkPanel = new JPanel(new GridLayout(1, 2, 8, 0));
         bulkPanel.setBackground(Color.WHITE);
         bulkPanel.setAlignmentX(LEFT_ALIGNMENT);
-        bulkPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        bulkPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         bulkPanel.setVisible(false);
 
-        btnBulkStop = createButton("Ngừng Hàng Loạt", new Color(0xC0392B));
-        btnBulkRestore = createButton("Khôi Phục Hàng Loạt", new Color(0x27AE60));
+        btnBulkStop = createButton("Ngừng Hàng Loạt", AppColors.DANGER);
+        btnBulkRestore = createButton("Khôi Phục Hàng Loạt", AppColors.PRIMARY);
         bulkPanel.add(btnBulkStop);
         bulkPanel.add(btnBulkRestore);
         formPanel.add(bulkPanel);
@@ -483,9 +483,18 @@ public class ProductPanel extends JPanel implements IProductView {
     @Override
     public void updateButtonState(boolean isEditMode) {
         if (!Session.isAdmin()) return;
-        btnAdd.setEnabled(!isEditMode);
-        btnUpdate.setEnabled(isEditMode);
-        btnToggle.setEnabled(isEditMode);
+        
+        boolean hasBulkSelection = presenter != null && !presenter.getGlobalSelectedIds().isEmpty();
+        
+        if (hasBulkSelection) {
+            btnAdd.setEnabled(false);
+            btnUpdate.setEnabled(false);
+            btnToggle.setEnabled(false);
+        } else {
+            btnAdd.setEnabled(!isEditMode);
+            btnUpdate.setEnabled(isEditMode);
+            btnToggle.setEnabled(isEditMode);
+        }
     }
 
     @Override
@@ -703,13 +712,13 @@ public class ProductPanel extends JPanel implements IProductView {
 
     private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(0, 34));
+        btn.setPreferredSize(new Dimension(0, 38));
 
         Color hoverColor = bg.darker();
         btn.addMouseListener(new java.awt.event.MouseAdapter() {

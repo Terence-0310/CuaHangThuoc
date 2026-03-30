@@ -316,7 +316,7 @@ public class AttendanceDAO {
             try (PreparedStatement ps1 = conn.prepareStatement(sqlUpdateClockOut);
                  PreparedStatement ps2 = conn.prepareStatement(sqlUpdateMoney)) {
 
-                String extra = (overtimeReason != null && !overtimeReason.trim().isEmpty()) ? " | Tăng ca: " + overtimeReason.trim() : "";
+                String extra = (overtimeReason != null && !overtimeReason.trim().isEmpty()) ? " | " + overtimeReason.trim() : "";
                 ps1.setString(1, extra);
                 ps1.setInt(2, empID);
                 int rows = ps1.executeUpdate();

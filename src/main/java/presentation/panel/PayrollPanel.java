@@ -42,7 +42,7 @@ public class PayrollPanel extends JPanel {
         // Mặc định load tháng hiện tại
         cboMonth.setSelectedItem(LocalDate.now().getMonthValue());
         cboYear.setSelectedItem(LocalDate.now().getYear());
-        loadPayrollData();
+        refreshData();
     }
 
     // ================================================================
@@ -87,7 +87,7 @@ public class PayrollPanel extends JPanel {
 
         JButton btnLoad = new JButton("Xem Bảng Lương");
         styleButton(btnLoad, AppColors.PRIMARY);
-        btnLoad.addActionListener(e -> loadPayrollData());
+        btnLoad.addActionListener(e -> refreshData());
         controls.add(btnLoad);
 
         bar.add(controls, BorderLayout.EAST);
@@ -230,7 +230,7 @@ public class PayrollPanel extends JPanel {
     //  DATA LOADING
     // ================================================================
 
-    private void loadPayrollData() {
+    public void refreshData() {
         int month = (Integer) cboMonth.getSelectedItem();
         int year = (Integer) cboYear.getSelectedItem();
 
@@ -247,10 +247,11 @@ public class PayrollPanel extends JPanel {
             "   ISNULL(p.TongTien, ISNULL(att.TongTien, 0)) AS LuongThucNhan " +
             "FROM HR_Employees e " +
             "LEFT JOIN ( " +
-            "   SELECT EmpID, SUM(TotalHours) AS TongGio, SUM(DailyEarned) AS TongTien " +
-            "   FROM HR_Attendances " +
-            "   WHERE MONTH(CreatedAt) = ? AND YEAR(CreatedAt) = ? " +
-            "   GROUP BY EmpID " +
+            "   SELECT a.EmpID, SUM(a.TotalHours) AS TongGio, SUM(a.DailyEarned) AS TongTien " +
+            "   FROM HR_Attendances a " +
+            "   JOIN HR_Schedules s ON a.ScheduleID = s.ScheduleID " +
+            "   WHERE MONTH(s.WorkDate) = ? AND YEAR(s.WorkDate) = ? " +
+            "   GROUP BY a.EmpID " +
             ") att ON e.EmpID = att.EmpID " +
             "LEFT JOIN HR_Payroll p ON e.EmpID = p.EmpID AND p.Thang = ? AND p.Nam = ? " +
             "WHERE e.Status = N'Đang làm' OR att.TongGio IS NOT NULL OR p.PayrollID IS NOT NULL " +
@@ -273,7 +274,6 @@ public class PayrollPanel extends JPanel {
                 row.fullName = rs.getNString("FullName");
                 row.tongGio = rs.getBigDecimal("TongGio");
                 row.tongTien = rs.getBigDecimal("LuongThucNhan");
-                row.payrollId = rs.getObject("PayrollID") != null ? rs.getInt("PayrollID") : 0;
                 row.paid = rs.getString("TrangThai") != null
                         && rs.getString("TrangThai").contains("Đã");
                 row.month = month;
@@ -283,8 +283,6 @@ public class PayrollPanel extends JPanel {
                 if (row.tongGio.compareTo(BigDecimal.ZERO) == 0 && !row.paid) {
                     status = "Không có ca";
                 }
-                row.statusText = status;
-
                 currentData.add(row);
 
                 tableModel.addRow(new Object[]{
@@ -351,7 +349,7 @@ public class PayrollPanel extends JPanel {
 
         if (confirm == JOptionPane.YES_OPTION) {
             executePayment(data);
-            loadPayrollData();
+            refreshData();
         }
     }
 
@@ -390,7 +388,7 @@ public class PayrollPanel extends JPanel {
             JOptionPane.showMessageDialog(this,
                 "Đã thanh toán thành công " + success + "/" + pending.size() + " nhân viên.",
                 "Hoàn Tất", JOptionPane.INFORMATION_MESSAGE);
-            loadPayrollData();
+            refreshData();
         }
     }
 
@@ -448,6 +446,5 @@ public class PayrollPanel extends JPanel {
         int payrollId;
         boolean paid;
         int month, year;
-        String statusText;
     }
 }

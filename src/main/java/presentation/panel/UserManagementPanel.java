@@ -196,16 +196,16 @@ public class UserManagementPanel extends JPanel {
 
         formPanel.add(Box.createRigidArea(new Dimension(0, 12)));
 
-        // === Buttons ===
+        // === Buttons: 3x2 grid ===
         JPanel btnPanel = new JPanel(new GridLayout(3, 2, 8, 8));
-        btnPanel.setBackground(Color.WHITE);
+        btnPanel.setOpaque(false);
         btnPanel.setAlignmentX(LEFT_ALIGNMENT);
-        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 126));
+        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        btnAdd = createButton("Thêm User", AppColors.SUCCESS);
+        btnAdd = createButton("Thêm User", AppColors.PRIMARY);
         btnAdd.addActionListener(e -> doAdd());
 
-        btnUpdate = createButton("Cập Nhật", new Color(0x17, 0xA2, 0xB8));
+        btnUpdate = createButton("Cập Nhật", AppColors.PRIMARY);
         btnUpdate.setEnabled(false);
         btnUpdate.addActionListener(e -> doUpdate());
 
@@ -216,7 +216,7 @@ public class UserManagementPanel extends JPanel {
         btnClear = createButton("Làm Mới", AppColors.SECONDARY);
         btnClear.addActionListener(e -> clearForm());
 
-        btnResetPwd = createButton("Reset MK", new Color(0xFF, 0x85, 0x00));
+        btnResetPwd = createButton("Reset MK", AppColors.PRIMARY);
         btnResetPwd.setEnabled(false);
         btnResetPwd.addActionListener(e -> doResetPassword());
 
@@ -825,12 +825,13 @@ public class UserManagementPanel extends JPanel {
 
     private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 38));
         Color hover = bg.darker();
         btn.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) { if (btn.isEnabled()) btn.setBackground(hover); }

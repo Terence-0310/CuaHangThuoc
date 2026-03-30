@@ -2,7 +2,6 @@ package presentation.panel;
 
 import domain.entity.AttendanceHistory;
 import infrastructure.repository.AttendanceDAO;
-import common.DatePickerField;
 import common.AppColors;
 
 import javax.swing.*;
@@ -27,8 +26,7 @@ import java.util.List;
 public class AttendanceHistoryPanel extends JPanel {
     private final AttendanceDAO attendanceDAO = new AttendanceDAO();
 
-    private DatePickerField dpFrom;
-    private DatePickerField dpTo;
+    private JComboBox<Integer> cboMonth, cboYear;
     private JTable tbHistory;
     private DefaultTableModel tbModel;
 
@@ -55,8 +53,8 @@ public class AttendanceHistoryPanel extends JPanel {
         initTable();
         initPagination();
 
-        // Auto-load 3 ngày gần nhất
-        SwingUtilities.invokeLater(this::doFilter);
+        // Auto-load current month data
+        SwingUtilities.invokeLater(this::refreshData);
     }
 
     // ================================================
@@ -67,27 +65,32 @@ public class AttendanceHistoryPanel extends JPanel {
         filterPanel.setBackground(Color.WHITE);
         filterPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        // Từ ngày (mặc định 3 ngày trước)
-        filterPanel.add(createLabel("Từ ngày:"));
-        dpFrom = new DatePickerField(LocalDate.now().minusDays(3));
-        dpFrom.setPreferredSize(new Dimension(140, 32));
-        filterPanel.add(dpFrom);
+        filterPanel.add(createLabel("Tháng:"));
+        cboMonth = new JComboBox<>();
+        for (int i = 1; i <= 12; i++) cboMonth.addItem(i);
+        cboMonth.setSelectedItem(LocalDate.now().getMonthValue());
+        cboMonth.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        cboMonth.setPreferredSize(new Dimension(80, 32));
+        filterPanel.add(cboMonth);
 
-        // Đến ngày
-        filterPanel.add(createLabel("Đến ngày:"));
-        dpTo = new DatePickerField(LocalDate.now());
-        dpTo.setPreferredSize(new Dimension(140, 32));
-        filterPanel.add(dpTo);
+        filterPanel.add(createLabel("Năm:"));
+        cboYear = new JComboBox<>();
+        int curYear = LocalDate.now().getYear();
+        for (int y = curYear - 3; y <= curYear; y++) cboYear.addItem(y);
+        cboYear.setSelectedItem(curYear);
+        cboYear.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        cboYear.setPreferredSize(new Dimension(100, 32));
+        filterPanel.add(cboYear);
 
         // Nút lọc
-        JButton btnFilter = new JButton("Lọc Dữ Liệu");
+        JButton btnFilter = new JButton("Xem Lịch Sử");
         btnFilter.setBackground(AppColors.PRIMARY);
         btnFilter.setForeground(Color.WHITE);
-        btnFilter.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnFilter.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnFilter.setFocusPainted(false);
         btnFilter.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnFilter.setPreferredSize(new Dimension(130, 32));
-        btnFilter.addActionListener(e -> { currentPage = 1; doFilter(); });
+        btnFilter.addActionListener(e -> { currentPage = 1; refreshData(); });
         filterPanel.add(btnFilter);
 
         add(filterPanel, BorderLayout.NORTH);
@@ -203,14 +206,12 @@ public class AttendanceHistoryPanel extends JPanel {
     // ================================================
     // FILTER + LOAD DATA
     // ================================================
-    private void doFilter() {
+    public void refreshData() {
         try {
-            LocalDate from = dpFrom.getDate();
-            LocalDate to = dpTo.getDate();
-            if (from == null || to == null) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn ngày hợp lệ!");
-                return;
-            }
+            int month = (Integer) cboMonth.getSelectedItem();
+            int year = (Integer) cboYear.getSelectedItem();
+            LocalDate from = LocalDate.of(year, month, 1);
+            LocalDate to = from.withDayOfMonth(from.lengthOfMonth());
 
             // ★ Tự động đánh dấu vắng mặt cho các ca đã qua mà NV không nhận ca
             int absentMarked = attendanceDAO.markAbsentSchedules();
@@ -400,7 +401,7 @@ public class AttendanceHistoryPanel extends JPanel {
                         "Cập nhật thành công!\nTổng giờ mới: " + totalHours + "h\n" +
                                 "Lương (SnapshotRate " + String.format("%,.0f", rateUsed) + "đ/h): " + String.format("%,.0f", earned) + "đ",
                         "Thành công", JOptionPane.INFORMATION_MESSAGE);
-                doFilter();
+                refreshData();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Lỗi định dạng giờ hoặc lỗi DB: " + ex.getMessage());
             }

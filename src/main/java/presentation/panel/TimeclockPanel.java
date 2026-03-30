@@ -326,10 +326,10 @@ public class TimeclockPanel extends JPanel {
             if (earlyReason != null) combinedReason += earlyReason;
             if (overtimeReason != null) {
                 if (!combinedReason.isEmpty()) combinedReason += " | ";
-                combinedReason += overtimeReason;
+                combinedReason += "Tăng ca: " + overtimeReason;
             }
 
-            attendanceDAO.clockOut(emp.getEmpID(), combinedReason.isEmpty() ? overtimeReason : combinedReason);
+            attendanceDAO.clockOut(emp.getEmpID(), combinedReason.isEmpty() ? null : combinedReason);
             JOptionPane.showMessageDialog(this, "Kết ca thành công!\nTạm biệt " + emp.getFullName() +
                     "\n(" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + ")",
                     "Thành công", JOptionPane.INFORMATION_MESSAGE);

@@ -211,16 +211,16 @@ public class SupplierPanel extends JPanel {
 
         formPanel.add(Box.createRigidArea(new Dimension(0, 16)));
 
-        // === Buttons: 3x2 grid ===
+        // === Buttons ===
         JPanel btnPanel = new JPanel(new GridLayout(3, 2, 8, 8));
-        btnPanel.setBackground(Color.WHITE);
+        btnPanel.setOpaque(false);
         btnPanel.setAlignmentX(LEFT_ALIGNMENT);
-        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 126));
+        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        btnAdd = createButton("Thêm NCC", AppColors.SUCCESS);
+        btnAdd = createButton("Thêm NCC", AppColors.PRIMARY);
         btnAdd.addActionListener(e -> doAdd());
 
-        btnUpdate = createButton("Cập Nhật", new Color(0x17, 0xA2, 0xB8));
+        btnUpdate = createButton("Cập Nhật", AppColors.PRIMARY);
         btnUpdate.setEnabled(false);
         btnUpdate.addActionListener(e -> doUpdate());
 
@@ -872,12 +872,13 @@ public class SupplierPanel extends JPanel {
 
     private JButton createButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 38));
 
         Color hover = bg.darker();
         btn.addMouseListener(new MouseAdapter() {

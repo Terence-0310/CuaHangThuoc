@@ -154,10 +154,12 @@ public class HrAdminPanel extends JPanel {
         tabbedPane.addTab("  3. Xếp Ca Theo Tuần  ", createScheduleTab());
 
         // Tab 4: Lịch Sử Chấm Công
-        tabbedPane.addTab("  4. Lịch Sử Ca Làm  ", new AttendanceHistoryPanel());
+        AttendanceHistoryPanel historyPanel = new AttendanceHistoryPanel();
+        tabbedPane.addTab("  4. Lịch Sử Ca Làm  ", historyPanel);
 
         // Tab 5: Bảng Lương
-        tabbedPane.addTab("  5. Bảng Lương Tháng  ", new PayrollPanel());
+        PayrollPanel payrollPanel = new PayrollPanel();
+        tabbedPane.addTab("  5. Bảng Lương Tháng  ", payrollPanel);
 
         tabbedPane.addChangeListener(e -> {
             if (tabbedPane.getSelectedIndex() == 0) loadEmpData();
@@ -165,6 +167,10 @@ public class HrAdminPanel extends JPanel {
             else if (tabbedPane.getSelectedIndex() == 2) {
                 refreshScheduleCombos();
                 loadScheduleData();
+            } else if (tabbedPane.getSelectedIndex() == 3) {
+                historyPanel.refreshData();
+            } else if (tabbedPane.getSelectedIndex() == 4) {
+                payrollPanel.refreshData();
             }
         });
 
@@ -245,10 +251,10 @@ public class HrAdminPanel extends JPanel {
         // === Buttons (2x2 grid) ===
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 8, 8));
         btnPanel.setOpaque(false);
-        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        btnPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 84));
         btnPanel.setAlignmentX(LEFT_ALIGNMENT);
 
-        btnAdd    = createActionButton("Thêm Mới", AppColors.SUCCESS);
+        btnAdd    = createActionButton("Thêm Mới", AppColors.PRIMARY);
         btnUpdate = createActionButton("Cập Nhật",  AppColors.PRIMARY);
         btnClear  = createActionButton("Làm Mới",   AppColors.SECONDARY);
         btnDelete = createActionButton("Cho Nghỉ Việc", AppColors.DANGER);
@@ -748,18 +754,18 @@ public class HrAdminPanel extends JPanel {
         txtShiftEnd.setPreferredSize(new Dimension(70, 34));
         editPanel.add(txtShiftEnd);
 
-        JButton btnAddShift = createActionButton("Thêm Ca", AppColors.SUCCESS);
-        btnAddShift.setPreferredSize(new Dimension(100, 36));
+        JButton btnAddShift = createActionButton("Thêm Ca", AppColors.PRIMARY);
+        btnAddShift.setPreferredSize(new Dimension(100, 38));
         btnAddShift.addActionListener(e -> doAddShift());
         editPanel.add(btnAddShift);
 
         JButton btnSaveShift = createActionButton("Lưu Thay Đổi", AppColors.PRIMARY);
-        btnSaveShift.setPreferredSize(new Dimension(120, 36));
+        btnSaveShift.setPreferredSize(new Dimension(120, 38));
         btnSaveShift.addActionListener(e -> doSaveShift());
         editPanel.add(btnSaveShift);
 
         JButton btnDelShift = createActionButton("Xóa Ca", AppColors.DANGER);
-        btnDelShift.setPreferredSize(new Dimension(90, 36));
+        btnDelShift.setPreferredSize(new Dimension(90, 38));
         btnDelShift.addActionListener(e -> doDeleteShift());
         editPanel.add(btnDelShift);
 
@@ -955,10 +961,10 @@ public class HrAdminPanel extends JPanel {
 
         JPanel btnRow = new JPanel(new GridLayout(0, 2, 8, 8));
         btnRow.setOpaque(false);
-        btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
+        btnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 84));
         btnRow.setAlignmentX(LEFT_ALIGNMENT);
 
-        btnSchedAction = createActionButton("Tạo Lịch Hàng Loạt", AppColors.SUCCESS);
+        btnSchedAction = createActionButton("Tạo Lịch Hàng Loạt", AppColors.PRIMARY);
         btnSchedAction.addActionListener(e -> doSchedAction());
         
         JButton btnCopyLastWeek = createActionButton("Copy Lịch Tuần Trước", AppColors.PRIMARY);
@@ -1214,7 +1220,7 @@ public class HrAdminPanel extends JPanel {
         lblSchedTitle.setText("Tạo Lịch Làm Việc");
         lblSchedTitle.setForeground(AppColors.PRIMARY);
         btnSchedAction.setText("Tạo Lịch Hàng Loạt");
-        btnSchedAction.setBackground(AppColors.SUCCESS);
+        btnSchedAction.setBackground(AppColors.PRIMARY);
         if (cboSchedEmp.getItemCount() > 0) cboSchedEmp.setSelectedIndex(0);
         if (cboSchedShift.getItemCount() > 0) cboSchedShift.setSelectedIndex(0);
         dpFrom.setDate(LocalDate.now());
@@ -1477,13 +1483,13 @@ public class HrAdminPanel extends JPanel {
 
     private JButton createActionButton(String text, Color bg) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setBackground(bg);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setBorderPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(0, 36));
+        btn.setPreferredSize(new Dimension(0, 38));
         return btn;
     }
 
