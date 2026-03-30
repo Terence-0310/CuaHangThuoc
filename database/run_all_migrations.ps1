@@ -58,7 +58,8 @@ $phase2 = @(
     "33_fix_overtime_baseline.sql",
     "33_seed_leave_shifts.sql",
     "34_nullable_schedule_times.sql",
-    "34_schedule_snapshot_shift_config.sql"
+    "34_schedule_snapshot_shift_config.sql",
+    "35_fix_hrm_mand_links.sql"
 )
 
 $total = $phase1.Count + $phase2.Count + 1
