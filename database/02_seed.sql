@@ -2,16 +2,42 @@ USE QuanLyCuaHangThuoc;
 GO
 
 -- ================================================================
--- CLEAN + RESEED: GiaNhap = TỔNG TIỀN CỦA CẢ LÔ (không phải đơn giá)
--- TongTien PhieuNhap = SUM(GiaNhap) (không nhân gì cả)
+-- MerPhar — Seed Data tổng hợp
+-- Chạy file này SAU khi chạy 01_schema.sql
 -- ================================================================
 
-PRINT N'=== ĐANG XÓA DỮ LIỆU CŨ ===';
-DELETE FROM LoHang;
-DELETE FROM PhieuNhap;
-DELETE FROM SanPham;
-DELETE FROM NhaCungCap;
-PRINT N'  ✓ Xóa xong';
+-- ================================================================
+-- 0. NGƯỜI DÙNG + KHÁCH HÀNG
+-- ================================================================
+INSERT INTO NguoiDung (TenDangNhap, MatKhau, HoTen, VaiTro) VALUES
+(N'admin',  N'admin123', N'Nguyễn Văn Admin',   N'Admin'),
+(N'nv01',   N'123456',   N'Vương Gia Long',     N'NhanVien'),
+(N'nv02',   N'123456',   N'Trần Văn Hảo',      N'NhanVien');
+GO
+
+INSERT INTO KhachHang (SoDT, TenKH) VALUES
+('0901234567', N'Nguyễn Thị Lan'),
+('0912345678', N'Trần Văn Minh'),
+('0923456789', N'Lê Hoàng Anh'),
+('0934567890', N'Phạm Thị Hương'),
+('0945678901', N'Võ Đình Khoa');
+GO
+
+-- ================================================================
+-- 0.1 HRM: Nhân viên + Ca làm việc
+-- ================================================================
+INSERT INTO HR_Shifts (ShiftName, DefaultStartTime, DefaultEndTime) VALUES
+(N'Ca Sáng',  '06:00', '14:00'),
+(N'Ca Chiều', '14:00', '22:00'),
+(N'Ca Hành Chính', '08:00', '17:00');
+GO
+
+INSERT INTO HR_Employees (FullName, PinCode, Phone, HourlyRate, OvertimeRate, HireDate, Status, MaND) VALUES
+(N'Vương Gia Long',  '1234', '0901111111', 30000, 45000, '2024-01-15', N'Đang làm', 2),
+(N'Trần Văn Hảo',   '5678', '0902222222', 28000, 42000, '2024-03-01', N'Đang làm', 3);
+GO
+
+PRINT N'  ✓ Người dùng, Khách hàng, HR';
 
 -- ================================================================
 -- 1. NHẬP 10 NHÀ CUNG CẤP
