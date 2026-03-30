@@ -2,7 +2,7 @@
 -- Thêm cột GioiTinh cho bảng KhachHang
 -- Chạy file này 1 lần trên SQL Server
 -- =============================================
-USE CuaHangThuoc;
+USE QuanLyCuaHangThuoc;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'GioiTinh' AND Object_ID = OBJECT_ID('KhachHang'))

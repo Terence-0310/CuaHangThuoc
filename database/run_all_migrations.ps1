@@ -1,9 +1,16 @@
-$ErrorActionPreference = "Continue"
-$server = "localhost"
-$user = "sa"
-$pass = "123456"
-$targetDb = "QuanLyCuaHangThuoc"
-$dir = "d:\eproject\eProject-StoreBanThuoc\database"
+param(
+    [string]$Server = "localhost",
+    [string]$User = "sa",
+    [string]$Pass = "123456",
+    [string]$TargetDb = "QuanLyCuaHangThuoc"
+)
+
+$ErrorActionPreference = "Stop"
+$server = $Server
+$user = $User
+$pass = $Pass
+$targetDb = $TargetDb
+$dir = $PSScriptRoot
 
 # Ensure UTF-8 output encoding for PS itself just in case
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -71,23 +78,23 @@ foreach ($f in $phase1) {
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
     if ($f -eq "01_create_database.sql") {
         # file 01 drops and creates DB, so it must connect to master
-        sqlcmd -S $server -d master -U $user -P $pass -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+        sqlcmd -S $server -d master -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
     } else {
         # other files must connect directly to QuanLyCuaHangThuoc because they might lack the USE statement
-        sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+        sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
     }
 }
 
 # HRM cleanup
 $i++
 Write-Host "[$i/$total] DROP old HR tables" -ForegroundColor Yellow
-$phaseHRM_cleanup | sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -I 2>&1 | Out-Null
+$phaseHRM_cleanup | sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -I 2>&1 | Out-Null
 
 # Run Phase 2
 foreach ($f in $phase2) {
     $i++
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
-    sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+    sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
 }
 
 Write-Host "`n=== ALL $total MIGRATIONS COMPLETE ===" -ForegroundColor Green

@@ -24,7 +24,29 @@ GO
 
 -- 2. Xóa cột quota cũ (chuyển sang config toàn cục)
 IF COL_LENGTH('HR_Employees', 'WeeklyLeaveQuota') IS NOT NULL
+BEGIN
+    DECLARE @sqlDropWeekly NVARCHAR(MAX) = N'';
+    SELECT @sqlDropWeekly = @sqlDropWeekly + N'ALTER TABLE HR_Employees DROP CONSTRAINT [' + dc.name + N'];'
+    FROM sys.default_constraints dc
+    INNER JOIN sys.columns c ON c.default_object_id = dc.object_id
+    WHERE c.object_id = OBJECT_ID('HR_Employees') AND c.name = 'WeeklyLeaveQuota';
+    IF @sqlDropWeekly <> N'' EXEC sp_executesql @sqlDropWeekly;
+END
+GO
+
+IF COL_LENGTH('HR_Employees', 'WeeklyLeaveQuota') IS NOT NULL
     ALTER TABLE HR_Employees DROP COLUMN WeeklyLeaveQuota;
+GO
+
+IF COL_LENGTH('HR_Employees', 'AnnualLeaveQuota') IS NOT NULL
+BEGIN
+    DECLARE @sqlDropAnnual NVARCHAR(MAX) = N'';
+    SELECT @sqlDropAnnual = @sqlDropAnnual + N'ALTER TABLE HR_Employees DROP CONSTRAINT [' + dc.name + N'];'
+    FROM sys.default_constraints dc
+    INNER JOIN sys.columns c ON c.default_object_id = dc.object_id
+    WHERE c.object_id = OBJECT_ID('HR_Employees') AND c.name = 'AnnualLeaveQuota';
+    IF @sqlDropAnnual <> N'' EXEC sp_executesql @sqlDropAnnual;
+END
 GO
 
 IF COL_LENGTH('HR_Employees', 'AnnualLeaveQuota') IS NOT NULL

@@ -28,8 +28,12 @@ public class DatabaseHelper {
 
             HikariConfig config = new HikariConfig();
             config.setJdbcUrl(props.getProperty("db.url"));
-            config.setUsername(props.getProperty("db.user"));
-            config.setPassword(props.getProperty("db.password"));
+            String username = props.getProperty("db.user", "").trim();
+            String password = props.getProperty("db.password", "");
+            if (!username.isEmpty()) {
+                config.setUsername(username);
+                config.setPassword(password);
+            }
             config.setDriverClassName(props.getProperty("db.driver"));
 
             config.setMinimumIdle(Integer.parseInt(

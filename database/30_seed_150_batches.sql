@@ -7,6 +7,8 @@ GO
 -- ================================================================
 
 PRINT N'=== ĐANG XÓA DỮ LIỆU CŨ ===';
+DELETE FROM ChiTietHoaDon;
+DELETE FROM HoaDon;
 DELETE FROM LoHang;
 DELETE FROM PhieuNhap;
 DELETE FROM SanPham;
