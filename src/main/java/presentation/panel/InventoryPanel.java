@@ -338,6 +338,26 @@ public class InventoryPanel extends JPanel {
     //  FORM PANEL (Left side)
     // ================================================================
 
+    private void applyCurrencyFormatter(JTextField textField) {
+        textField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyReleased(java.awt.event.KeyEvent e) {
+                int code = e.getKeyCode();
+                if (code == java.awt.event.KeyEvent.VK_LEFT || code == java.awt.event.KeyEvent.VK_RIGHT) return;
+                String text = textField.getText().replace(",", "").trim();
+                if (!text.isEmpty()) {
+                    try {
+                        long val = Long.parseLong(text);
+                        String formatted = String.format("%,d", val);
+                        if (!textField.getText().equals(formatted)) {
+                            textField.setText(formatted);
+                        }
+                    } catch (NumberFormatException ex) {}
+                }
+            }
+        });
+    }
+
     private JPanel createFormPanel() {
         JPanel formPanel = new JPanel();
         formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
@@ -375,6 +395,19 @@ public class InventoryPanel extends JPanel {
         addFormRow(formPanel, "Số lượng:", txtSoLuong);
 
         txtGiaNhap = new JTextField();
+        ((javax.swing.text.AbstractDocument) txtGiaNhap.getDocument()).setDocumentFilter(
+            new javax.swing.text.DocumentFilter() {
+                @Override
+                public void insertString(FilterBypass fb, int offset, String text, javax.swing.text.AttributeSet attr) throws javax.swing.text.BadLocationException {
+                    if (text.matches("[0-9,]*")) super.insertString(fb, offset, text, attr);
+                }
+                @Override
+                public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attr) throws javax.swing.text.BadLocationException {
+                    if (text.matches("[0-9,]*")) super.replace(fb, offset, length, text, attr);
+                }
+            }
+        );
+        applyCurrencyFormatter(txtGiaNhap);
         addFormRowWithSuffix(formPanel, "Giá nhập:", txtGiaNhap, "VNĐ");
 
         dpHSD = new DatePickerField();

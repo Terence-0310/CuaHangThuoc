@@ -703,8 +703,23 @@ public class ProductPanel extends JPanel implements IProductView {
             @Override
             public void keyTyped(KeyEvent e) {
                 char c = e.getKeyChar();
-                if (!Character.isDigit(c) && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE) {
+                if (!Character.isDigit(c) && c != KeyEvent.VK_BACK_SPACE && c != KeyEvent.VK_DELETE && c != ',') {
                     e.consume();
+                }
+            }
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int code = e.getKeyCode();
+                if (code == KeyEvent.VK_LEFT || code == KeyEvent.VK_RIGHT) return;
+                String text = field.getText().replace(",", "").trim();
+                if (!text.isEmpty()) {
+                    try {
+                        long val = Long.parseLong(text);
+                        String formatted = String.format("%,d", val);
+                        if (!field.getText().equals(formatted)) {
+                            field.setText(formatted);
+                        }
+                    } catch (NumberFormatException ex) {}
                 }
             }
         });
