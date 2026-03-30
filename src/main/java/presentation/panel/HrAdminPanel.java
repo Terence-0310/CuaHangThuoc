@@ -1253,10 +1253,12 @@ public class HrAdminPanel extends JPanel {
                     "Hôm nay: " + today.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             return;
         }
-        if (!isLeave && from.isEqual(today) && actualEnd != null && LocalTime.now().isAfter(actualEnd)) {
-            showWarning("Ca này đã kết thúc hôm nay!\n" +
-                    "Giờ ra: " + actualEnd + " — Bây giờ: " + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + "\n" +
-                    "Vui lòng chọn từ ngày mai trở đi.");
+
+        // CHẶN tạo lịch cho hôm nay nếu đã qua 06:00 sáng
+        if (from.isEqual(today) && LocalTime.now().isAfter(LocalTime.of(6, 0))) {
+            showWarning("Đã qua 06:00 sáng hôm nay (" + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + ")!\n" +
+                    "Không thể xếp ca hoặc thay đổi lịch làm việc cho ngày hôm nay nữa.\n" +
+                    "Vui lòng bắt đầu xếp ca từ ngày mai trở đi.");
             return;
         }
 
