@@ -65,7 +65,7 @@ public class POSPresenter {
         worker.execute();
     }
 
-    public void processCheckout(List<CartItem> cartSnapshot, String phone, String name, String payMethod) {
+    public void processCheckout(List<CartItem> cartSnapshot, String phone, String name, String gioiTinh, String payMethod) {
         view.showLoading(true);
 
         SwingWorker<Integer, Void> worker = new SwingWorker<>() {
@@ -76,6 +76,7 @@ public class POSPresenter {
                     return saleService.checkout(cartSnapshot,
                             phone.isEmpty() ? null : phone,
                             name.isEmpty() ? null : name,
+                            gioiTinh,
                             payMethod);
                 } catch (Exception e) {
                     errorMsg = e.getMessage();

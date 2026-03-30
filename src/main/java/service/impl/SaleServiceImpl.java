@@ -44,7 +44,7 @@ public class SaleServiceImpl implements ISaleService {
     }
 
     @Override
-    public int checkout(List<CartItem> cart, String soDT, String tenKH, String phuongThucTT) {
+    public int checkout(List<CartItem> cart, String soDT, String tenKH, String gioiTinh, String phuongThucTT) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException("Giỏ hàng trống");
         }
@@ -62,6 +62,7 @@ public class SaleServiceImpl implements ISaleService {
                     Customer newKH = new Customer();
                     newKH.setSoDT(soDT.trim());
                     newKH.setTenKH(tenKH != null ? tenKH.trim() : null);
+                    newKH.setGioiTinh(gioiTinh != null ? gioiTinh.trim() : null);
                     maKH = customerRepo.insert(conn, newKH);
                 } else {
                     maKH = kh.getMaKH();

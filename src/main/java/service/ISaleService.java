@@ -7,7 +7,7 @@ import java.util.List;
  * Service Interface: Bán hàng (POS) — Logic FEFO
  */
 public interface ISaleService {
-    int checkout(List<CartItem> cart, String soDT, String tenKH, String phuongThucTT);
+    int checkout(List<CartItem> cart, String soDT, String tenKH, String gioiTinh, String phuongThucTT);
     List<Object[]> searchProductsForSale(String keyword);
     domain.entity.Customer findCustomerByPhone(String phone);
 }

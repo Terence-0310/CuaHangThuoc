@@ -1048,9 +1048,11 @@ public class POSPanel extends JPanel {
             @Override
             protected Integer doInBackground() {
                 try {
+                    String gt = (String) cboGioiTinh.getSelectedItem();
                     return saleService.checkout(cartSnapshot,
                             soDT.isEmpty() ? null : soDT,
                             tenKH_val.isEmpty() ? null : tenKH_val,
+                            gt,
                             payMethod);
                 } catch (Exception e) {
                     errorMsg = e.getMessage();
