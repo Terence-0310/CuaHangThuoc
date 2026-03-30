@@ -472,7 +472,7 @@ public class HrDAO {
                                     LocalTime actualStart, LocalTime actualEnd) {
          // ★ Chặn trùng: 1 NV chỉ có 1 lịch/ngày (không cho vừa làm vừa nghỉ cùng ngày)
          // ★ Snapshot shift config: Lưu giờ cấu hình gốc vào schedule để admin sửa config sau không ảnh hưởng
-         String sql = "IF NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE EmpID = ? AND WorkDate = ?) " +
+         String sql = "IF NOT EXISTS (SELECT 1 FROM HR_Schedules WHERE EmpID = ? AND WorkDate = ? AND ShiftID = ?) " +
                      "INSERT INTO HR_Schedules (EmpID, ShiftID, WorkDate, ActualStart, ActualEnd, ShiftDefaultStart, ShiftDefaultEnd) " +
                      "SELECT ?, ?, ?, ?, ?, sh.DefaultStartTime, sh.DefaultEndTime " +
                      "FROM HR_Shifts sh WHERE sh.ShiftID = ?";
@@ -491,21 +491,22 @@ public class HrDAO {
                     continue;
                 }
 
-                // IF NOT EXISTS params (2)
+                // IF NOT EXISTS params (3)
                 ps.setInt(1, empID);
                 ps.setDate(2, Date.valueOf(current));
+                ps.setInt(3, shiftID);
                 // SELECT ?, ?, ?, ?, ? FROM HR_Shifts WHERE ShiftID = ?
-                ps.setInt(3, empID);
-                ps.setInt(4, shiftID);
-                ps.setDate(5, Date.valueOf(current));
+                ps.setInt(4, empID);
+                ps.setInt(5, shiftID);
+                ps.setDate(6, Date.valueOf(current));
                 if (isLeave) {
-                    ps.setNull(6, java.sql.Types.TIME);
                     ps.setNull(7, java.sql.Types.TIME);
+                    ps.setNull(8, java.sql.Types.TIME);
                 } else {
-                    ps.setTime(6, Time.valueOf(actualStart));
-                    ps.setTime(7, Time.valueOf(actualEnd));
+                    ps.setTime(7, Time.valueOf(actualStart));
+                    ps.setTime(8, Time.valueOf(actualEnd));
                 }
-                ps.setInt(8, shiftID); // ShiftID for sub-select
+                ps.setInt(9, shiftID); // ShiftID for sub-select
                 ps.addBatch();
 
                 current = current.plusDays(1);
@@ -533,10 +534,6 @@ public class HrDAO {
                      "JOIN HR_Employees e ON s.EmpID = e.EmpID " +
                      "JOIN HR_Shifts sh ON s.ShiftID = sh.ShiftID " +
                      "WHERE s.WorkDate >= CAST(GETDATE() AS DATE) " +
-                     "AND NOT EXISTS (" +
-                     "    SELECT 1 FROM HR_Attendances a " +
-                     "    WHERE a.ScheduleID = s.ScheduleID AND a.ClockOut IS NOT NULL" +
-                     ") " +
                      "ORDER BY s.WorkDate ASC, e.FullName";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -615,8 +612,8 @@ public class HrDAO {
             ps.setInt(7, scheduleID);
             ps.executeUpdate();
         } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().contains("UQ_Schedule_EmpDate")) {
-                throw new RuntimeException("TRÙNG LỊCH: Nhân viên này đã có lịch ngày " + workDate + "!");
+            if (e.getMessage() != null && e.getMessage().contains("UQ_Schedule_EmpDateShift")) {
+                throw new RuntimeException("TRÙNG CÙNG CA: Nhân viên này đã được xếp Ca này trong ngày " + workDate + " rồi!");
             }
             throw new RuntimeException(e);
         }
