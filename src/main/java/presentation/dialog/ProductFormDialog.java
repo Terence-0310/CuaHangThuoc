@@ -1,5 +1,9 @@
 package presentation.dialog;
-/** Placeholder: Product Form Dialog — Sprint Ngày 1 Chiều */
-public class ProductFormDialog extends javax.swing.JDialog {
-    // TODO: Form thêm/sửa thuốc
+/**
+ * @deprecated Legacy compatibility wrapper.
+ * Use {@link ProductFormDialogPlaceholder} to indicate placeholder intent.
+ */
+@Deprecated
+public class ProductFormDialog extends ProductFormDialogPlaceholder {
+    // Backward-compatible alias for old references.
 }

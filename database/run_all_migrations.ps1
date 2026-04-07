@@ -1,19 +1,33 @@
-param(
-    [string]$Server = "localhost",
-    [string]$User = "sa",
-    [string]$Pass = "123456",
-    [string]$TargetDb = "QuanLyCuaHangThuoc"
-)
+# Chay tat ca migration SQL Server — duong dan theo thu muc chua script (khong hard-code may khac).
+# Bien moi truong (tuy chon): MEPHAR_SQL_SERVER, MEPHAR_SQL_USER, MEPHAR_SQL_PASSWORD
+# Vi du instance: $env:MEPHAR_SQL_SERVER = "localhost\SQLEXPRESS"
 
 $ErrorActionPreference = "Stop"
-$server = $Server
-$user = $User
-$pass = $Pass
-$targetDb = $TargetDb
+$server = if ($env:MEPHAR_SQL_SERVER) { $env:MEPHAR_SQL_SERVER } else { "localhost" }
+$user   = if ($env:MEPHAR_SQL_USER)   { $env:MEPHAR_SQL_USER }   else { "sa" }
+$pass   = if ($env:MEPHAR_SQL_PASSWORD) { $env:MEPHAR_SQL_PASSWORD } else { "123456" }
+$targetDb = "QuanLyCuaHangThuoc"
 $dir = $PSScriptRoot
+
+if (-not (Get-Command sqlcmd -ErrorAction SilentlyContinue)) {
+    Write-Host "LOI: Khong tim thay sqlcmd. Cai SQL Server Command Line Tools hoac SQL Server." -ForegroundColor Red
+    exit 1
+}
 
 # Ensure UTF-8 output encoding for PS itself just in case
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+function Invoke-SqlFile {
+    param(
+        [string]$Database,
+        [string]$FilePath
+    )
+    $out = & sqlcmd -S $server -d $Database -U $user -P $pass -f 65001 -i $FilePath -I 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host $out
+        throw "sqlcmd that bai (exit $LASTEXITCODE): $FilePath"
+    }
+}
 
 # Phase 1: Base schema + core data
 $phase1 = @(
@@ -66,35 +80,49 @@ $phase2 = @(
     "33_seed_leave_shifts.sql",
     "34_nullable_schedule_times.sql",
     "34_schedule_snapshot_shift_config.sql",
-    "35_fix_hrm_mand_links.sql"
+    "35_fix_hrm_mand_links.sql",
+    "36_seed_test_employees_and_products.sql",
+    "37_seed_existing_employees_for_testing.sql",
+    "38_hrm_24x7_three_shifts.sql",
+    "39_seed_next_7_days_three_shifts.sql",
+    "40_seed_next_30_days_three_shifts.sql",
+    "41_seed_payroll_demo_from_attendance.sql"
 )
 
 $total = $phase1.Count + $phase2.Count + 1
 $i = 0
 
+try {
+
 # Run Phase 1
 foreach ($f in $phase1) {
     $i++
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
+    $full = Join-Path $dir $f
     if ($f -eq "01_create_database.sql") {
-        # file 01 drops and creates DB, so it must connect to master
-        sqlcmd -S $server -d master -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+        $out = & sqlcmd -S $server -d master -U $user -P $pass -f 65001 -i $full -I 2>&1
+        if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "sqlcmd that bai: $f" }
     } else {
-        # other files must connect directly to QuanLyCuaHangThuoc because they might lack the USE statement
-        sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+        Invoke-SqlFile -Database $targetDb -FilePath $full
     }
 }
 
 # HRM cleanup
 $i++
 Write-Host "[$i/$total] DROP old HR tables" -ForegroundColor Yellow
-$phaseHRM_cleanup | sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -I 2>&1 | Out-Null
+$out = $phaseHRM_cleanup | & sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -I 2>&1
+if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "sqlcmd that bai: HRM cleanup" }
 
 # Run Phase 2
 foreach ($f in $phase2) {
     $i++
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
-    sqlcmd -S $server -d $targetDb -U $user -P $pass -b -f 65001 -i "$dir\$f" -I 2>&1 | Out-Null
+    Invoke-SqlFile -Database $targetDb -FilePath (Join-Path $dir $f)
 }
 
 Write-Host "`n=== ALL $total MIGRATIONS COMPLETE ===" -ForegroundColor Green
+
+} catch {
+    Write-Host "`nLOI MIGRATION: $($_.Exception.Message)" -ForegroundColor Red
+    throw
+}

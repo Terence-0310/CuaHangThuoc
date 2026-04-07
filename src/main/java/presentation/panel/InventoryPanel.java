@@ -49,7 +49,8 @@ public class InventoryPanel extends JPanel {
         "ISNULL(p.NgayNhap, l.NgayNhap)",       // 7: Ngày Nhập
         "nd.HoTen",                             // 8: Người Nhập
         "ncc.TenNCC",                           // 9: NCC
-        null                                    // 10: Trạng Thái
+        null,                                   // 10: Thứ tự FEFO
+        null                                    // 11: Trạng Thái
     };
 
     // === FORM FIELDS ===
@@ -476,7 +477,7 @@ public class InventoryPanel extends JPanel {
         String[] cols = {
                 "STT", "Số Lô", "Tên Sản Phẩm", "ĐVT",
                 "SL", "Giá Nhập", "Hạn SD",
-                "Ngày Nhập", "Người Nhập", "NCC",
+                "Ngày Nhập", "Người Nhập", "NCC", "FEFO",
                 "Trạng Thái"
         };
         tableModel = new DefaultTableModel(cols, 0) {
@@ -521,7 +522,7 @@ public class InventoryPanel extends JPanel {
         });
 
         // Column widths
-        int[] widths = {35, 100, 160, 45, 50, 85, 80, 80, 100, 120, 80};
+        int[] widths = {35, 100, 160, 45, 50, 85, 80, 80, 100, 120, 55, 80};
         for (int i = 0; i < widths.length; i++) {
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
@@ -665,7 +666,9 @@ public class InventoryPanel extends JPanel {
             "       l.SoLuong, l.GiaNhap, l.HanSuDung, " +
             "       ISNULL(p.NgayNhap, l.NgayNhap) AS NgayNhap, " +
             "       ISNULL(nd.HoTen, N'---') AS NguoiNhap, " +
-            "       ISNULL(ncc.TenNCC, N'---') AS TenNCC " +
+            "       ISNULL(ncc.TenNCC, N'---') AS TenNCC, " +
+            "       ROW_NUMBER() OVER (PARTITION BY l.MaSP " +
+            "                          ORDER BY l.HanSuDung ASC, ISNULL(p.NgayNhap, l.NgayNhap) ASC, l.MaLo ASC) AS FefoOrder " +
             fromClause + where +
             "ORDER BY " + buildOrderBy() + " " +
             "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
@@ -742,6 +745,7 @@ public class InventoryPanel extends JPanel {
                                 ngayNhap,
                                 rs.getNString("NguoiNhap"),
                                 rs.getNString("TenNCC"),
+                                rs.getInt("FefoOrder"),
                                 status
                         });
                     }
@@ -1229,8 +1233,8 @@ public class InventoryPanel extends JPanel {
                     c.setBackground(row % 2 == 0 ? Color.WHITE : AppColors.TABLE_ROW_ALT);
                 }
 
-                // Status column (col 10) - color coded
-                if (col == 10 && val != null) {
+                // Status column (col 11) - color coded
+                if (col == 11 && val != null) {
                     String status = val.toString();
                     if (!sel) {
                         switch (status) {
@@ -1256,7 +1260,7 @@ public class InventoryPanel extends JPanel {
                 }
 
                 // Alignment
-                if (col == 0 || col == 4 || col == 6 || col == 7 || col == 10) {
+                if (col == 0 || col == 4 || col == 6 || col == 7 || col == 10 || col == 11) {
                     setHorizontalAlignment(SwingConstants.CENTER);
                 } else if (col == 5) {
                     setHorizontalAlignment(SwingConstants.RIGHT);

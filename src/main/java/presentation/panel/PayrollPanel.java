@@ -377,31 +377,55 @@ public class PayrollPanel extends JPanel {
 
         if (confirm == JOptionPane.YES_OPTION) {
             int success = 0;
+            int failed = 0;
             for (PayrollRow r : pending) {
                 try {
                     executePayment(r);
                     success++;
                 } catch (Exception e) {
-                    // skip duplicates
+                    failed++;
                 }
             }
             JOptionPane.showMessageDialog(this,
-                "Đã thanh toán thành công " + success + "/" + pending.size() + " nhân viên.",
+                "Đã thanh toán thành công " + success + "/" + pending.size() + " nhân viên."
+                        + (failed > 0 ? ("\nLỗi: " + failed + " nhân viên.") : ""),
                 "Hoàn Tất", JOptionPane.INFORMATION_MESSAGE);
             refreshData();
         }
     }
 
     private void executePayment(PayrollRow data) {
-        String sql = "INSERT INTO HR_Payroll (EmpID, Thang, Nam, TongGio, TongTien, TrangThai, NgayThanhToan) " +
-                     "VALUES (?, ?, ?, ?, ?, N'Đã thanh toán', GETDATE())";
+        // Idempotent payment: nếu đã có payroll tháng này thì cập nhật, chưa có thì thêm mới.
+        String sql =
+                "IF EXISTS (SELECT 1 FROM HR_Payroll WHERE EmpID = ? AND Thang = ? AND Nam = ?) " +
+                "BEGIN " +
+                "   UPDATE HR_Payroll " +
+                "   SET TongGio = ?, TongTien = ?, TrangThai = N'Đã thanh toán', NgayThanhToan = GETDATE() " +
+                "   WHERE EmpID = ? AND Thang = ? AND Nam = ? " +
+                "END " +
+                "ELSE " +
+                "BEGIN " +
+                "   INSERT INTO HR_Payroll (EmpID, Thang, Nam, TongGio, TongTien, TrangThai, NgayThanhToan) " +
+                "   VALUES (?, ?, ?, ?, ?, N'Đã thanh toán', GETDATE()) " +
+                "END";
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            // IF EXISTS
             ps.setInt(1, data.empId);
             ps.setInt(2, data.month);
             ps.setInt(3, data.year);
+            // UPDATE
             ps.setBigDecimal(4, data.tongGio);
             ps.setBigDecimal(5, data.tongTien);
+            ps.setInt(6, data.empId);
+            ps.setInt(7, data.month);
+            ps.setInt(8, data.year);
+            // INSERT
+            ps.setInt(9, data.empId);
+            ps.setInt(10, data.month);
+            ps.setInt(11, data.year);
+            ps.setBigDecimal(12, data.tongGio);
+            ps.setBigDecimal(13, data.tongTien);
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi thanh toán: " + e.getMessage());

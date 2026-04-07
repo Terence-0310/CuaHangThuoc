@@ -1,5 +1,9 @@
 package presentation.dialog;
-/** Placeholder: Invoice Detail Dialog — Sprint Ngày 2 Tối */
-public class InvoiceDetailDialog extends javax.swing.JDialog {
-    // TODO: Chi tiết 1 hóa đơn
+/**
+ * @deprecated Legacy compatibility wrapper.
+ * Use {@link InvoiceDetailDialogPlaceholder} to indicate placeholder intent.
+ */
+@Deprecated
+public class InvoiceDetailDialog extends InvoiceDetailDialogPlaceholder {
+    // Backward-compatible alias for old references.
 }

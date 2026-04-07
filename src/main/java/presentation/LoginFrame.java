@@ -163,9 +163,13 @@ public class LoginFrame extends JFrame {
                     "Lỗi đăng nhập", JOptionPane.ERROR_MESSAGE);
             txtPassword.setText("");
             txtPassword.requestFocusInWindow();
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
+            Throwable root = ex;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
             JOptionPane.showMessageDialog(this,
-                    "Không thể kết nối database!\n" + ex.getMessage(),
+                    "Đăng nhập thất bại!\n" + root.getMessage(),
                     "Lỗi hệ thống", JOptionPane.ERROR_MESSAGE);
         }
     }

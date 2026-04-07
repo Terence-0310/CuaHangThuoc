@@ -1,5 +1,10 @@
 package presentation.panel;
-/** Placeholder: Dashboard Panel — Sprint Ngày 3 Sáng */
-public class DashboardPanel extends javax.swing.JPanel {
-    // TODO: 3 Revenue Cards + 3 JTables (Hết hạn, Top bán chạy, Top KH VIP)
+/**
+ * @deprecated Legacy compatibility wrapper.
+ * Use {@link DashboardPanelPlaceholder} for explicit placeholder intent.
+ * Active dashboard implementation is {@link ReportPanel}.
+ */
+@Deprecated
+public class DashboardPanel extends DashboardPanelPlaceholder {
+    // Backward-compatible alias for old references.
 }
