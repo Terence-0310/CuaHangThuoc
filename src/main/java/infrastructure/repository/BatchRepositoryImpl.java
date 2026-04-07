@@ -45,7 +45,8 @@ public class BatchRepositoryImpl implements IBatchRepository {
                      "JOIN SanPham sp ON lh.MaSP = sp.MaSP " +
                      "LEFT JOIN PhieuNhap pn ON lh.MaPN = pn.MaPN " +
                      "LEFT JOIN NguoiDung nd ON pn.MaND = nd.MaND " +
-                     "WHERE lh.MaSP = ? AND lh.SoLuong > 0 ORDER BY lh.HanSuDung ASC";
+                     "WHERE lh.MaSP = ? AND lh.SoLuong > 0 " +
+                     "ORDER BY lh.HanSuDung ASC, lh.NgayNhap ASC, lh.MaLo ASC";
         List<Batch> list = new ArrayList<>();
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -66,7 +67,7 @@ public class BatchRepositoryImpl implements IBatchRepository {
                      "LEFT JOIN PhieuNhap pn ON lh.MaPN = pn.MaPN " +
                      "LEFT JOIN NguoiDung nd ON pn.MaND = nd.MaND " +
                      "WHERE lh.SoLuong > 0 AND sp.TrangThai = 1 " +
-                     "ORDER BY sp.TenSP, lh.HanSuDung ASC";
+                     "ORDER BY sp.TenSP, lh.HanSuDung ASC, lh.NgayNhap ASC, lh.MaLo ASC";
         List<Batch> list = new ArrayList<>();
         try (Connection conn = DatabaseHelper.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -81,9 +82,9 @@ public class BatchRepositoryImpl implements IBatchRepository {
     @Override
     public List<Batch> getFEFO(Connection conn, int maSP) {
         // ★ UPDLOCK: Khóa dòng tránh Race Condition
-        String sql = "SELECT MaLo, MaSP, SoLo, HanSuDung, SoLuong, GiaNhap FROM LoHang WITH (UPDLOCK, ROWLOCK) " +
+        String sql = "SELECT MaLo, MaSP, SoLo, HanSuDung, SoLuong, GiaNhap, NgayNhap FROM LoHang WITH (UPDLOCK, ROWLOCK) " +
                      "WHERE MaSP = ? AND SoLuong > 0 AND HanSuDung > GETDATE() " +
-                     "ORDER BY HanSuDung ASC";
+                     "ORDER BY HanSuDung ASC, NgayNhap ASC, MaLo ASC";
         List<Batch> list = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, maSP);
@@ -96,6 +97,10 @@ public class BatchRepositoryImpl implements IBatchRepository {
                     b.setHanSuDung(rs.getDate("HanSuDung").toLocalDate());
                     b.setSoLuong(rs.getInt("SoLuong"));
                     b.setGiaNhap(rs.getBigDecimal("GiaNhap"));
+                    Timestamp ngayNhap = rs.getTimestamp("NgayNhap");
+                    if (ngayNhap != null) {
+                        b.setNgayNhap(ngayNhap.toLocalDateTime());
+                    }
                     list.add(b);
                 }
             }

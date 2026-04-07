@@ -1,5 +1,9 @@
 package presentation.component;
-/** Placeholder: Styled JTable — Sprint Ngày 3 Chiều */
-public class StyledTable extends javax.swing.JTable {
-    // TODO: Alternating rows, auto-resize, format tiền VNĐ
+/**
+ * @deprecated Legacy compatibility wrapper.
+ * Use {@link StyledTablePlaceholder} to indicate placeholder intent.
+ */
+@Deprecated
+public class StyledTable extends StyledTablePlaceholder {
+    // Backward-compatible alias for old references.
 }

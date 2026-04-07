@@ -1,5 +1,10 @@
 package presentation.panel;
-/** Placeholder: Product Panel — Sprint Ngày 1 Chiều */
-public class ProductPanel extends javax.swing.JPanel {
-    // TODO: JTable + Search + CRUD buttons
+/**
+ * @deprecated Legacy compatibility wrapper for the old package path.
+ * Use {@link ProductPanelPlaceholder} to indicate placeholder intent.
+ * Active product UI is {@code presentation.ProductPanel}.
+ */
+@Deprecated
+public class ProductPanel extends ProductPanelPlaceholder {
+    // Backward-compatible alias for old references.
 }

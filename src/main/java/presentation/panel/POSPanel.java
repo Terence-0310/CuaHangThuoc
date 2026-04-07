@@ -20,6 +20,7 @@ import java.awt.event.*;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.text.DecimalFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,6 +53,7 @@ public class POSPanel extends JPanel {
     private DefaultTableModel cartModel;
     private JTable cartTable;
     private JLabel lblCartTotal;
+    private JLabel lblCartMeta;
 
     // === Right: Checkout ===
     private JTextField txtCustomerPhone, txtCustomerName;
@@ -183,10 +185,20 @@ public class POSPanel extends JPanel {
         wrapper.setBackground(Color.WHITE);
         wrapper.setBorder(new EmptyBorder(0, 16, 4, 16));
 
+        JPanel top = new JPanel(new BorderLayout());
+        top.setOpaque(false);
         JLabel lbl = new JLabel("  Danh sách sản phẩm (còn hàng & chưa hết hạn)");
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lbl.setForeground(AppColors.TEXT_SECONDARY);
-        wrapper.add(lbl, BorderLayout.NORTH);
+        top.add(lbl, BorderLayout.WEST);
+
+        JButton btnFefoView = new JButton("Xem thứ tự FEFO");
+        btnFefoView.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        btnFefoView.setFocusPainted(false);
+        btnFefoView.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnFefoView.addActionListener(e -> showFefoOrderDialogForSelectedProduct());
+        top.add(btnFefoView, BorderLayout.EAST);
+        wrapper.add(top, BorderLayout.NORTH);
 
         // ★ Risk 2 Prevention: Chỉ hiện SP còn tồn kho & chưa hết hạn
         String[] cols = {"Mã SP", "Tên Sản Phẩm", "ĐVT", "Giá Bán", "Tồn Kho"};
@@ -272,7 +284,20 @@ public class POSPanel extends JPanel {
         lblCartTotal.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblCartTotal.setForeground(AppColors.SUCCESS);
         cartHeader.add(lblCartTotal, BorderLayout.EAST);
-        wrapper.add(cartHeader, BorderLayout.NORTH);
+
+        JPanel headerWrapper = new JPanel();
+        headerWrapper.setLayout(new BoxLayout(headerWrapper, BoxLayout.Y_AXIS));
+        headerWrapper.setOpaque(false);
+        headerWrapper.add(cartHeader);
+
+        // Giỏ hàng theo nhân viên đăng nhập (giúp NV nhìn nhanh trạng thái giỏ)
+        lblCartMeta = new JLabel("  NV: " + Session.getCurrentUser().getHoTen() + " | Mặt hàng: 0 | Số lượng: 0");
+        lblCartMeta.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblCartMeta.setForeground(AppColors.TEXT_SECONDARY);
+        lblCartMeta.setBorder(new EmptyBorder(2, 0, 6, 0));
+        headerWrapper.add(lblCartMeta);
+
+        wrapper.add(headerWrapper, BorderLayout.NORTH);
 
         // Table
         String[] cols = {"STT", "Tên SP", "ĐVT", "SL", "Đơn Giá", "Thành Tiền"};
@@ -716,6 +741,65 @@ public class POSPanel extends JPanel {
         refreshCartTable();
     }
 
+    private void showFefoOrderDialogForSelectedProduct() {
+        int row = productTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this,
+                    "Vui lòng chọn sản phẩm để xem thứ tự FEFO.",
+                    "Chưa chọn sản phẩm", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        int maSP = (int) productModel.getValueAt(row, 0);
+        String tenSP = String.valueOf(productModel.getValueAt(row, 1));
+
+        DefaultTableModel m = new DefaultTableModel(
+                new String[]{"FEFO", "Số lô", "Hạn SD", "Ngày nhập", "Tồn", "Giá nhập"}, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+
+        String sql = "SELECT SoLo, HanSuDung, NgayNhap, SoLuong, GiaNhap " +
+                "FROM LoHang " +
+                "WHERE MaSP = ? AND SoLuong > 0 AND HanSuDung > GETDATE() " +
+                "ORDER BY HanSuDung ASC, NgayNhap ASC, MaLo ASC";
+
+        try (Connection conn = DatabaseHelper.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, maSP);
+            try (ResultSet rs = ps.executeQuery()) {
+                int rank = 1;
+                DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+                while (rs.next()) {
+                    Date hsd = rs.getDate("HanSuDung");
+                    Timestamp ngayNhap = rs.getTimestamp("NgayNhap");
+                    m.addRow(new Object[]{
+                            rank++,
+                            rs.getNString("SoLo"),
+                            hsd != null ? hsd.toLocalDate().format(dtf) : "---",
+                            ngayNhap != null ? ngayNhap.toLocalDateTime().toLocalDate().format(dtf) : "---",
+                            rs.getInt("SoLuong"),
+                            MONEY_FMT.format(rs.getBigDecimal("GiaNhap"))
+                    });
+                }
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Không tải được thứ tự FEFO: " + ex.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JTable t = new JTable(m);
+        t.setRowHeight(28);
+        t.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        JScrollPane sp = new JScrollPane(t);
+        sp.setPreferredSize(new Dimension(700, 320));
+
+        JOptionPane.showMessageDialog(this, sp,
+                "Thứ tự FEFO - " + tenSP,
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void removeSelectedCartItem() {
         int row = cartTable.getSelectedRow();
         if (row < 0 || row >= cart.size()) return;
@@ -949,9 +1033,11 @@ public class POSPanel extends JPanel {
         cartModel.setRowCount(0);
         BigDecimal total = BigDecimal.ZERO;
         int stt = 1;
+        int totalQty = 0;
         for (CartItem item : cart) {
             BigDecimal thanhTien = item.getThanhTien();
             total = total.add(thanhTien);
+            totalQty += item.getSoLuong();
             cartModel.addRow(new Object[]{
                 stt++,
                 item.getTenSP(),
@@ -962,6 +1048,11 @@ public class POSPanel extends JPanel {
             });
         }
         lblCartTotal.setText("Tổng: " + MONEY_FMT.format(total) + " VNĐ  ");
+        if (lblCartMeta != null) {
+            lblCartMeta.setText("  NV: " + Session.getCurrentUser().getHoTen()
+                    + " | Mặt hàng: " + cart.size()
+                    + " | Số lượng: " + totalQty);
+        }
         lblTongTien.setText(MONEY_FMT.format(total) + " VNĐ");
         calcChange();
     }
@@ -1156,10 +1247,11 @@ public class POSPanel extends JPanel {
     //  QR CODE PAYMENT DIALOG
     // ================================================================
     private boolean showQRPaymentDialog(BigDecimal amount) {
-        // VietQR API — Techcombank
-        String bankBin = "970407";
-        String accountNo = "19072888896017";
-        String accountName = "VUONG NGOC GIA BAO";
+        // VietQR API — VietinBank
+        String bankBin = "970415";
+        String bankName = "VietinBank";
+        String accountNo = "100600272094";
+        String accountName = "NGUYEN DUC ANH TAI";
         long amountLong = amount.longValue();
 
         String qrUrl = "https://img.vietqr.io/image/" + bankBin + "-" + accountNo
@@ -1205,7 +1297,7 @@ public class POSPanel extends JPanel {
         center.setBorder(new javax.swing.border.EmptyBorder(16, 20, 10, 20));
 
         // Bank info
-        JLabel lblBank = new JLabel("Techcombank — " + accountName);
+        JLabel lblBank = new JLabel(bankName + " — " + accountName);
         lblBank.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblBank.setForeground(AppColors.TEXT_PRIMARY);
         lblBank.setAlignmentX(CENTER_ALIGNMENT);
@@ -1274,7 +1366,7 @@ public class POSPanel extends JPanel {
         btnPrintQR.setBorderPainted(false);
         btnPrintQR.setPreferredSize(new Dimension(120, 40));
         btnPrintQR.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnPrintQR.addActionListener(e -> exportQrPdf(qrUrl, amount, accountName, accountNo));
+        btnPrintQR.addActionListener(e -> exportQrPdf(qrUrl, amount, bankName, accountName, accountNo));
 
         JButton btnConfirm = new JButton("Xác nhận đã thanh toán");
         btnConfirm.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -1343,7 +1435,7 @@ public class POSPanel extends JPanel {
         return confirmed[0];
     }
 
-    private void exportQrPdf(String qrUrl, BigDecimal amount, String accountName, String accountNo) {
+    private void exportQrPdf(String qrUrl, BigDecimal amount, String bankName, String accountName, String accountNo) {
         javax.swing.JFileChooser fc = new javax.swing.JFileChooser();
         fc.setDialogTitle("Lưu mã QR thanh toán");
         fc.setSelectedFile(new java.io.File("QR_ThanhToan_" + amount.longValue() + ".pdf"));
@@ -1377,7 +1469,7 @@ public class POSPanel extends JPanel {
             doc.add(new com.lowagie.text.Paragraph(" "));
 
             // Bank info
-            doc.add(new com.lowagie.text.Paragraph("Ngan hang: Techcombank", normalFont));
+            doc.add(new com.lowagie.text.Paragraph("Ngan hang: " + bankName, normalFont));
             doc.add(new com.lowagie.text.Paragraph("Chu TK: " + accountName, normalFont));
             doc.add(new com.lowagie.text.Paragraph("STK: " + accountNo, normalFont));
 

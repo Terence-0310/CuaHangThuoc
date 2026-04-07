@@ -34,6 +34,9 @@ import java.util.Set;
  * → Đổi UI? Sửa file NÀY.
  * → Logic không đổi? ProductPresenter giữ nguyên.
  */
+/**
+ * Active product management screen mounted by {@code presentation.MainFrame}.
+ */
 public class ProductPanel extends JPanel implements IProductView {
 
     private final ProductPresenter presenter;

@@ -33,6 +33,9 @@ import java.util.List;
  *
  * KHÔNG SỬ DỤNG ICON. KHÔNG SCROLLBAR DỌC CHO TOÀN TRANG.
  */
+/**
+ * Active dashboard implementation used by {@code presentation.MainFrame}.
+ */
 public class ReportPanel extends JPanel {
 
     private static final DecimalFormat MONEY_FMT = new DecimalFormat("#,##0");

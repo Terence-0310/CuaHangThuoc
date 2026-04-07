@@ -1,5 +1,9 @@
 package presentation.component;
-/** Placeholder: Search Bar — Sprint Ngày 3 Chiều */
-public class SearchBar extends javax.swing.JPanel {
-    // TODO: Ô tìm kiếm tái sử dụng (TextField + Button)
+/**
+ * @deprecated Legacy compatibility wrapper.
+ * Use {@link SearchBarPlaceholder} to indicate placeholder intent.
+ */
+@Deprecated
+public class SearchBar extends SearchBarPlaceholder {
+    // Backward-compatible alias for old references.
 }

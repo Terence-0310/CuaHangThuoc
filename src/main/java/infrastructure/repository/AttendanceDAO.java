@@ -114,7 +114,12 @@ public class AttendanceDAO {
         String sql = "INSERT INTO HR_Attendances (EmpID, ScheduleID, ClockIn, LateReason, " +
                      "SnapshotRate, SnapshotOTRate, SnapshotStart, SnapshotEnd, ShiftDefaultStart, ShiftDefaultEnd) " +
                      "SELECT ?, s.ScheduleID, GETDATE(), ?, " +
-                     "e.HourlyRate, e.OvertimeRate, s.ActualStart, s.ActualEnd, s.ShiftDefaultStart, s.ShiftDefaultEnd " +
+                     // Ca dem 22:00-06:00: cong them 30% luong
+                     "CASE WHEN s.ShiftDefaultStart = '22:00:00' AND s.ShiftDefaultEnd = '06:00:00' " +
+                     "     THEN ROUND(e.HourlyRate * 1.3, 2) ELSE e.HourlyRate END, " +
+                     "CASE WHEN s.ShiftDefaultStart = '22:00:00' AND s.ShiftDefaultEnd = '06:00:00' " +
+                     "     THEN ROUND(e.OvertimeRate * 1.3, 2) ELSE e.OvertimeRate END, " +
+                     "s.ActualStart, s.ActualEnd, s.ShiftDefaultStart, s.ShiftDefaultEnd " +
                      "FROM HR_Schedules s " +
                      "JOIN HR_Employees e ON e.EmpID = ? " +
                      "WHERE s.ScheduleID = ?";
