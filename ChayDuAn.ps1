@@ -30,11 +30,28 @@ if (-not (Test-Command "java")) {
 }
 
 # Khoi tao bien moi truong DB de tranh login user rong khi properties de trong db.user/db.password.
-$env:DB_URL = Use-IfBlank $env:DB_URL (Use-IfBlank $env:MEPHAR_DB_URL "jdbc:sqlserver://localhost:1433;databaseName=QuanLyCuaHangThuoc;encrypt=false;trustServerCertificate=true;characterEncoding=UTF-8;sendStringParametersAsUnicode=true;useUnicode=true;")
+# Uu tien cao nhat: DB_URL / MEPHAR_DB_URL. Neu khong co, tu tao URL tu Server Name.
+$dbName = Use-IfBlank $env:DB_NAME (Use-IfBlank $env:MEPHAR_DB_NAME "QuanLyCuaHangThuoc")
+$dbServer = Use-IfBlank $env:DB_SERVER (Use-IfBlank $env:MEPHAR_SQL_SERVER "localhost")
+$dbPort = Use-IfBlank $env:DB_PORT (Use-IfBlank $env:MEPHAR_DB_PORT "1433")
+
+if ($dbServer -like "*\*") {
+    # Dang named instance, vi du: localhost\SQLEXPRESS
+    $instanceName = $dbServer.Split("\", 2)[1]
+    $hostName = $dbServer.Split("\", 2)[0]
+    $autoDbUrl = "jdbc:sqlserver://$hostName;instanceName=$instanceName;databaseName=$dbName;encrypt=false;trustServerCertificate=true;characterEncoding=UTF-8;sendStringParametersAsUnicode=true;useUnicode=true;"
+} else {
+    # Dang host:port, vi du localhost:1433
+    $autoDbUrl = "jdbc:sqlserver://$dbServer`:$dbPort;databaseName=$dbName;encrypt=false;trustServerCertificate=true;characterEncoding=UTF-8;sendStringParametersAsUnicode=true;useUnicode=true;"
+}
+
+$env:DB_URL = Use-IfBlank $env:DB_URL (Use-IfBlank $env:MEPHAR_DB_URL $autoDbUrl)
 $env:DB_USER = Use-IfBlank $env:DB_USER (Use-IfBlank $env:MEPHAR_DB_USER "sa")
 $env:DB_PASSWORD = Use-IfBlank $env:DB_PASSWORD (Use-IfBlank $env:MEPHAR_DB_PASSWORD "123456")
 $env:DB_DRIVER = Use-IfBlank $env:DB_DRIVER (Use-IfBlank $env:MEPHAR_DB_DRIVER "com.microsoft.sqlserver.jdbc.SQLServerDriver")
-Write-Host ">>> DB config active: USER=$($env:DB_USER), URL=localhost:1433/QuanLyCuaHangThuoc" -ForegroundColor DarkGray
+Write-Host ">>> DB config active: USER=$($env:DB_USER), SERVER=$dbServer, DB=$dbName" -ForegroundColor DarkGray
+Write-Host ">>> DB_URL full: $($env:DB_URL)" -ForegroundColor DarkGray
+Write-Host ">>> DB_DRIVER: $($env:DB_DRIVER)" -ForegroundColor DarkGray
 
 if ($env:MEPHAR_RUN_DB_MIGRATION -eq "1") {
     if (-not (Test-Command "sqlcmd")) {

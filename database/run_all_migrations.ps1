@@ -22,7 +22,7 @@ function Invoke-SqlFile {
         [string]$Database,
         [string]$FilePath
     )
-    $out = & sqlcmd -S $server -d $Database -U $user -P $pass -f 65001 -i $FilePath -I 2>&1
+    $out = & sqlcmd -S $server -d $Database -U $user -P $pass -f 65001 -i $FilePath -I -b 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host $out
         throw "sqlcmd that bai (exit $LASTEXITCODE): $FilePath"
@@ -86,10 +86,17 @@ $phase2 = @(
     "38_hrm_24x7_three_shifts.sql",
     "39_seed_next_7_days_three_shifts.sql",
     "40_seed_next_30_days_three_shifts.sql",
-    "41_seed_payroll_demo_from_attendance.sql"
+    "41_seed_payroll_demo_from_attendance.sql",
+    "42_demand_planning_datamart.sql"
 )
 
-$total = $phase1.Count + $phase2.Count + 1
+$phase3 = @(
+    "42_chain_pharmacy_schema.sql",
+    "43_chain_pharmacy_etl_forecast.sql",
+    "44_seed_large_operational_data.sql"
+)
+
+$total = $phase1.Count + $phase2.Count + $phase3.Count + 1
 $i = 0
 
 try {
@@ -100,7 +107,7 @@ foreach ($f in $phase1) {
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
     $full = Join-Path $dir $f
     if ($f -eq "01_create_database.sql") {
-        $out = & sqlcmd -S $server -d master -U $user -P $pass -f 65001 -i $full -I 2>&1
+        $out = & sqlcmd -S $server -d master -U $user -P $pass -f 65001 -i $full -I -b 2>&1
         if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "sqlcmd that bai: $f" }
     } else {
         Invoke-SqlFile -Database $targetDb -FilePath $full
@@ -110,11 +117,18 @@ foreach ($f in $phase1) {
 # HRM cleanup
 $i++
 Write-Host "[$i/$total] DROP old HR tables" -ForegroundColor Yellow
-$out = $phaseHRM_cleanup | & sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -I 2>&1
+$out = $phaseHRM_cleanup | & sqlcmd -S $server -d $targetDb -U $user -P $pass -f 65001 -I -b 2>&1
 if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "sqlcmd that bai: HRM cleanup" }
 
 # Run Phase 2
 foreach ($f in $phase2) {
+    $i++
+    Write-Host "[$i/$total] $f" -ForegroundColor Cyan
+    Invoke-SqlFile -Database $targetDb -FilePath (Join-Path $dir $f)
+}
+
+# Run Phase 3 (chain pharmacy analytics)
+foreach ($f in $phase3) {
     $i++
     Write-Host "[$i/$total] $f" -ForegroundColor Cyan
     Invoke-SqlFile -Database $targetDb -FilePath (Join-Path $dir $f)

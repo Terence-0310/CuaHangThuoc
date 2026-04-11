@@ -24,3 +24,7 @@ errors.txt
 # Misc
 .DS_Store
 *.class
+
+# SQL Server backup dumps (large, local only)
+*.bak
+QuanLyCuaHangThuoc_Final/

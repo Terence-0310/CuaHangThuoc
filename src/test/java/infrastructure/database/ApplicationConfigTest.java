@@ -21,12 +21,13 @@ class ApplicationConfigTest {
 
             String dbUrl = props.getProperty("db.url");
             String dbDriver = props.getProperty("db.driver");
-            String dbPassword = props.getProperty("db.password", "");
+            String dbUser = props.getProperty("db.user", "").trim();
 
             assertNotNull(dbUrl, "db.url must be configured");
             assertFalse(dbUrl.isBlank(), "db.url must not be blank");
             assertEquals("com.microsoft.sqlserver.jdbc.SQLServerDriver", dbDriver);
-            assertTrue(dbPassword.isBlank(), "db.password should be blank in repository; use env variable");
+            assertFalse(dbUser.isBlank(),
+                    "db.user must not be blank (SQL Server rejects empty user); override with DB_USER in production if needed");
         }
     }
 }

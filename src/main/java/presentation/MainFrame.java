@@ -35,6 +35,7 @@ public class MainFrame extends JFrame {
 
     // Quản Trị sub-buttons
     private JButton btnUserMgmt;
+    private JButton btnChainDemand;
     private JButton btnHrAdmin;
 
     private JButton btnLogout;
@@ -165,6 +166,7 @@ public class MainFrame extends JFrame {
         //  COLLAPSIBLE: Quản Trị (Người Dùng)
         // ============================================================
         btnUserMgmt = createSubButton("Người Dùng");
+        btnChainDemand = createSubButton("Chuỗi & Dự báo");
 
         quanTriContainer = new JPanel();
         quanTriContainer.setLayout(new BoxLayout(quanTriContainer, BoxLayout.Y_AXIS));
@@ -172,6 +174,7 @@ public class MainFrame extends JFrame {
         quanTriContainer.setVisible(false); // collapsed by default
 
         quanTriContainer.add(btnUserMgmt);
+        quanTriContainer.add(btnChainDemand);
 
         btnQuanTriToggle = createSectionToggle("QUẢN TRỊ", quanTriContainer);
         sidebar.add(btnQuanTriToggle);
@@ -224,6 +227,7 @@ public class MainFrame extends JFrame {
         contentPanel.add(new presentation.panel.CustomerPanel(), "customer");
         contentPanel.add(new presentation.panel.InvoicePanel(), "invoice");
         contentPanel.add(new presentation.panel.UserManagementPanel(), "usermgmt");
+        contentPanel.add(new presentation.panel.ChainDemandPlanningPanel(), "chaindemand");
         contentPanel.add(new presentation.panel.HrAdminPanel(), "hradmin");
 
         add(contentPanel, BorderLayout.CENTER);
@@ -239,6 +243,7 @@ public class MainFrame extends JFrame {
         btnCustomer.addActionListener(e -> switchPanel("customer", btnCustomer));
         btnInvoice.addActionListener(e -> switchPanel("invoice", btnInvoice));
         btnUserMgmt.addActionListener(e -> switchPanel("usermgmt", btnUserMgmt));
+        btnChainDemand.addActionListener(e -> switchPanel("chaindemand", btnChainDemand));
         btnHrAdmin.addActionListener(e -> switchPanel("hradmin", btnHrAdmin));
         btnLogout.addActionListener(e -> doLogout());
 

@@ -242,3 +242,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\stop-project.ps1
 - Module sản phẩm và checkout FEFO là 2 điểm sáng rõ nét về phong cách code và logic nghiệp vụ.
 
 Nếu tiếp tục hoàn thiện đầy đủ UI cho các module còn lại, dự án có thể đạt mức vận hành nghiệp vụ khép kín cho cửa hàng thuốc từ đầu đến cuối.
+
+## 11) Demand planning module (new)
+
+Phan mo rong cho de tai chuoi nha thuoc da duoc them:
+
+- Migration mo hinh du lieu + data mart: `database/42_demand_planning_datamart.sql`.
+- Pipeline ETL/forecast/optimization thong qua stored procedures:
+  - `sp_DemandPlanning_RefreshDataMart`
+  - `sp_DemandPlanning_GenerateForecast`
+  - `sp_DemandPlanning_RunOptimization`
+  - `sp_DemandPlanning_Evaluate`
+- Java integration:
+  - `service/IDemandPlanningService`
+  - `infrastructure/repository/DemandPlanningRepositoryImpl`
+  - `tools/DemandPlanningRunner`
+- Script demo nhanh:
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\run-demand-planning.ps1`
+
+Bao cao danh gia chi tiet: `docs/demand-planning-report.md`.
